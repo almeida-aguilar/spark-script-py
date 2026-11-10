@@ -1,0 +1,7 @@
+# Cachés de herramientas (el resto de node_modules sigue versionado por decisión del proyecto)
+web/node_modules/.vite/
+web/node_modules/.cache/
+
+# Ficheros temporales
+*.log
+.DS_Store
