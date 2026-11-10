@@ -45,10 +45,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/configure-pages@v6
-        with:
-          # Requiere Pages activado en el repo (Settings > Pages > Source: GitHub Actions);
-          # es un paso manual de una vez: el GITHUB_TOKEN no puede crear el sitio por API.
-          enablement: true
+        # No bloquea el deploy: si aún no se activó Pages en el repo, solo avisa.
+        # Activación (manual, una vez): Settings > Pages > Source: «GitHub Actions».
+        continue-on-error: true
 
       - uses: actions/setup-node@v7
         with:
