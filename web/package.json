@@ -1,0 +1,23 @@
+{
+  "name": "wedopy-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "wedopy Web: LEGO WeDo 2.0 Smart Hub desde el navegador (Web Bluetooth)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "predev": "node scripts/copy-pyodide.mjs",
+    "prebuild": "node scripts/copy-pyodide.mjs",
+    "pretest": "node scripts/copy-pyodide.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^31.0.0",
+    "pyodide": "^314.0.7",
+    "vite": "^5.4.0",
+    "vitest": "^2.1.0"
+  }
+}

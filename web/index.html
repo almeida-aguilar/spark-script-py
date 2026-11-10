@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>wedopy Web · LEGO WeDo 2.0 desde el navegador</title>
+  <meta name="description" content="Controla un LEGO WeDo 2.0 Smart Hub con Web Bluetooth, sin instalar nada.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🤖%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="top">
+    <h1>wedopy <span class="tag">Web</span></h1>
+    <nav><a href="./docs/">Documentación</a></nav>
+  </header>
+
+  <div id="compat" class="banner" hidden></div>
+  <div id="unsafe" class="banner danger" role="alert" hidden></div>
+
+  <main class="grid">
+    <section class="card" id="card-connection" aria-labelledby="h-conn">
+      <h2 id="h-conn">Conexión</h2>
+      <div class="row">
+        <label>Transporte
+          <select id="transport">
+            <option value="web-bluetooth">Web Bluetooth (hub real)</option>
+            <option value="simulated">Simulador (sin hardware)</option>
+          </select>
+        </label>
+        <label class="inline" title="Si el selector sale vacío: lista todos los dispositivos BLE"><input type="checkbox" id="accept-all"> Mostrar todos los dispositivos</label>
+        <button id="btn-connect" class="primary">Conectar</button>
+        <button id="btn-disconnect" disabled>Desconectar</button>
+      </div>
+      <dl class="kv">
+        <dt>Estado</dt><dd><span id="state" class="badge">disconnected</span></dd>
+        <dt>Hub</dt><dd id="hub-name">—</dd>
+        <dt>Batería</dt><dd id="battery">—</dd>
+        <dt>Puerto A</dt><dd id="port-A">—</dd>
+        <dt>Puerto B</dt><dd id="port-B">—</dd>
+      </dl>
+      <button id="btn-estop" class="danger" disabled>⏹ Parar todos los motores</button>
+    </section>
+
+    <section class="card" id="card-motors" aria-labelledby="h-motors">
+      <h2 id="h-motors">Motores</h2>
+      <div id="motors"></div>
+    </section>
+
+    <section class="card" id="card-sensors" aria-labelledby="h-sensors">
+      <h2 id="h-sensors">Sensores</h2>
+      <dl class="kv">
+        <dt>Distancia</dt><dd><meter id="dist-meter" min="0" max="10" value="0"></meter> <span id="dist">—</span></dd>
+        <dt>Inclinación</dt><dd><span id="tilt">—</span></dd>
+        <dt>Botón</dt><dd><span id="button" class="badge">—</span></dd>
+      </dl>
+      <p class="hint">Los sensores del WeDo solo notifican cuando el valor cambia: mueve o inclina el sensor tras conectar.</p>
+    </section>
+
+    <section class="card" id="card-led" aria-labelledby="h-led">
+      <h2 id="h-led">LED</h2>
+      <div class="row">
+        <label>Color RGB <input type="color" id="led-rgb" value="#00ff40"></label>
+        <button id="led-off">Apagar</button>
+      </div>
+      <div id="led-presets" class="swatches" role="group" aria-label="Colores predefinidos"></div>
+      <p class="hint">Estado: <span id="led-state">—</span></p>
+    </section>
+
+    <section class="card" id="card-sim" aria-labelledby="h-sim" hidden>
+      <h2 id="h-sim">Simulador</h2>
+      <div class="row">
+        <label>Puerto A <select id="sim-A"><option value="">—</option><option>motor</option><option>distance</option><option>tilt</option></select></label>
+        <label>Puerto B <select id="sim-B"><option value="">—</option><option>motor</option><option>distance</option><option>tilt</option></select></label>
+      </div>
+      <label>Distancia <input type="range" id="sim-dist" min="0" max="10" step="1" value="10"></label>
+      <label>Inclinación
+        <select id="sim-tilt"><option>neutral</option><option>back</option><option>right</option><option>left</option><option>forward</option></select>
+      </label>
+      <div class="row">
+        <button id="sim-press">Pulsar botón</button>
+        <button id="sim-drop" class="danger">Perder enlace</button>
+        <label class="inline"><input type="checkbox" id="sim-freeze"> Hub sin responder</label>
+      </div>
+    </section>
+
+    <section class="card" id="card-examples" aria-labelledby="h-ex">
+      <h2 id="h-ex">Ejemplos</h2>
+      <div class="row">
+        <button id="ex-blink" disabled>Luces + marcha</button>
+        <button id="ex-avoid" disabled>Evasor de obstáculos</button>
+        <button id="ex-stop" disabled>Detener ejemplo</button>
+      </div>
+      <p class="hint">Usan la misma API pública (<code>hub.tasks</code>, <code>ctx.sleep</code>) que tus programas.</p>
+    </section>
+
+    <section class="card wide" id="card-python" aria-labelledby="h-py">
+      <h2 id="h-py">Editor Python <span id="py-status" class="hint"></span></h2>
+      <p class="hint">Escribe programas con la misma API que la biblioteca <code>wedopy</code> de Python (<code>from wedopy import Hub</code>). Usan el hub conectado arriba (real o simulado).</p>
+      <div class="row">
+        <label>Ejemplo <select id="py-example"></select></label>
+        <button id="py-run" class="primary">▶ Ejecutar</button>
+        <button id="py-stop" disabled>⏹ Detener</button>
+      </div>
+      <textarea id="py-code" spellcheck="false" autocapitalize="off" rows="14" aria-label="Código Python"></textarea>
+      <pre id="py-out" aria-live="polite"></pre>
+    </section>
+
+    <section class="card wide" id="card-console" aria-labelledby="h-console">
+      <h2 id="h-console">Consola <button id="console-clear" class="small">Limpiar</button></h2>
+      <ol id="console" aria-live="polite"></ol>
+    </section>
+  </main>
+
+  <footer>
+    <p>Requiere Chrome o Edge con Web Bluetooth y HTTPS. Los temporizadores de una pestaña oculta pueden retrasarse: mantén esta pestaña visible mientras haya motores en marcha.
+       <a href="./docs/web-seguridad.html">Limitaciones de seguridad</a>.</p>
+  </footer>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

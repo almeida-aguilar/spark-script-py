@@ -1,0 +1,16 @@
+// API pública de wedopy Web. Espejo de src/wedopy/__init__.py (nombres en camelCase).
+export { Hub } from "./api/hub.js";
+export { Motor, MotorGroup } from "./api/motor.js";
+export { DistanceSensor, TiltSensor } from "./api/sensors.js";
+export { Button } from "./api/button.js";
+export * from "./api/led.js";
+export { task, TaskManager, TaskCancelled } from "./api/tasks.js";
+export { runningTime } from "./api/time.js";
+export * from "./core/errors.js";
+export { HubState } from "./core/state-machine.js";
+export { DEFAULT_TIMING, makeTiming } from "./core/timing.js";
+export { SimulatedTransport } from "./transport/simulated.js";
+export {
+  WebBluetoothTransport, isWebBluetoothSupported, webBluetoothProblem,
+} from "./transport/web-bluetooth.js";
+export { Transport } from "./transport/interfaces.js";

@@ -1,0 +1,92 @@
+name: Deploy GitHub Pages
+
+# Publica la aplicación web (raíz) y la documentación Jekyll (/docs/) en un único artefacto.
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "web/**"
+      - "docs/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Instalar dependencias
+        run: npm ci
+        working-directory: web
+      - name: Pruebas (incluye Pyodide con JSPI; vitest pasa --experimental-wasm-jspi en Node 22)
+        run: npm test
+        working-directory: web
+
+  deploy:
+    needs: test
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Construir la aplicación web (Vite -> dist/)
+        run: |
+          npm ci
+          npm run build
+        working-directory: web
+
+      - name: Comprobar baseurl de Jekyll
+        # La documentación pasa de /wedopy/ a /wedopy/docs/: docs/_config.yml debe reflejarlo.
+        run: grep -Eq '^baseurl:\s*"?/wedopy/docs"?\s*$' docs/_config.yml
+
+      - name: Construir la documentación (Jekyll -> _site/)
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./docs
+          destination: ./_site
+
+      - name: Combinar artefactos
+        run: |
+          mkdir -p dist/docs
+          cp -r _site/. dist/docs/
+
+      - name: Validar contenido
+        run: |
+          test -f dist/index.html
+          test -f dist/docs/index.html
+          ls dist/assets/*.js dist/assets/*.css
+          test -f dist/pyodide/pyodide.asm.wasm       # runtime de Python autoalojado
+          test -f dist/pyodide/pyodide.mjs
+          grep -q '/wedopy/assets/' dist/index.html   # rutas con la base del proyecto
+          ! grep -q 'src="/src/' dist/index.html      # sin rutas de desarrollo
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
