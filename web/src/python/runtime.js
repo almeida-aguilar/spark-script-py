@@ -5,6 +5,11 @@ import { UnsupportedFeatureError } from "../core/errors.js";
 
 const PY_FILES = import.meta.glob("./wedopy/*.py", { query: "?raw", import: "default", eager: true });
 
+// «Detener» NO rechaza ninguna promesa: los sleep despiertan antes de tiempo con una
+// resolución normal y es _bridge.wait quien, tras volver de run_sync (la frontera JSPI ya
+// deshecha), lanza KeyboardInterrupt con check_stop(). Lanzar excepciones a través de la
+// frontera deja continuaciones huérfanas en Pyodide (promesas sin capturar).
+
 const BOOTSTRAP = `
 import time
 from wedopy import _bridge
@@ -58,6 +63,8 @@ export class PythonRuntime {
     for (const [path, source] of Object.entries(PY_FILES)) {
       py.FS.writeFile(`/home/pyodide/wedopy/${path.split("/").pop()}`, source);
     }
+    // «Detener» despierta los sleep antes de tiempo (resolución normal, sin rechazar):
+    // _bridge.wait detecta la bandera al volver de run_sync y lanza KeyboardInterrupt.
     globalThis.wedopyBridge = {
       getHub: () => this._getHub() ?? undefined,
       // Un solo disparo, como Ctrl+C: la limpieza del programa (finally) puede llamar al hub.
@@ -66,8 +73,17 @@ export class PythonRuntime {
         const done = () => { clearTimeout(timer); this._sleepers.delete(done); resolve(); };
         const timer = setTimeout(done, seconds * 1000);
         this._sleepers.add(done);
+        if (this._stop) done(); // «Detener» llegó antes del temporizador
       }),
     };
+    // «Detener» lanza KeyboardInterrupt al nivel superior de runPythonAsync; al escapar por el
+    // canal de handles del webloop creaba un PythonError huérfano como rechazo de promesa sin
+    // capturar. Este es el canal oficial del webloop (lo usa su consola): absorbe la interrupción
+    // a nivel de handle; el resultado del programa sigue llegando por la promesa del propio
+    // runPythonAsync, que consume _execute.
+    await py.runPythonAsync(
+      "import asyncio\nasyncio.get_event_loop()._keyboard_interrupt_handler = lambda: None",
+    );
     await py.runPythonAsync(BOOTSTRAP);
     this.py = py;
     onStatus("Python listo.");
@@ -118,7 +134,8 @@ export class PythonRuntime {
     }
   }
 
-  /** Detiene el programa: la siguiente llamada al hub o a sleep lanza KeyboardInterrupt. */
+  /** Detiene el programa: los sleep despiertan antes de tiempo (→ KeyboardInterrupt en
+   * _bridge.wait) y la siguiente llamada al hub lanza KeyboardInterrupt igualmente. */
   stop() {
     if (!this._running) return;
     this._stop = true;

@@ -59,7 +59,13 @@ def get(obj, name):
 
 
 def wait(awaitable):
-    """Bloquea hasta que una promesa de JavaScript se resuelva; devuelve su valor."""
+    """Bloquea hasta que una promesa de JavaScript se resuelva; devuelve su valor.
+
+    «Detener» no rechaza nada: si la promesa despertó antes de tiempo porque el usuario
+    pulsó «Detener», la bandera sigue levantada y check_stop() la convierte aquí en
+    KeyboardInterrupt, en puro Python (sin cruzar la frontera JSPI: lanzar excepciones
+    a través de run_sync deja continuaciones huérfanas en Pyodide).
+    """
     check_stop()
     try:
         result = run_sync(awaitable)
