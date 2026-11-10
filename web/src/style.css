@@ -238,7 +238,13 @@ input[type="color"] { padding: .15rem; width: 3rem; height: 2.3rem; }
 .motor button { min-height: 2.1rem; padding: .3rem .6rem; font-size: .9rem; }
 
 .swatches { display: flex; flex-wrap: wrap; gap: .4rem; }
-.swatch { width: 2.4rem; min-height: 0; padding: 0; border-radius: 50%; border: 2px solid var(--line); }
+/* Squares de color del LED: botones cuadrados con alto propio. Sin esto (min-height: 0
+   y padding: 0) quedaban aplastados y se veían como una línea. */
+.swatch {
+  width: 2.4rem; height: 2.4rem; min-height: 2.4rem; padding: 0;
+  border-radius: .45rem; border: 2px solid var(--line);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35);
+}
 .swatch:hover:not(:disabled) { border-color: var(--accent); }
 .hint { color: var(--muted); font-size: .84rem; margin: .5rem 0 0; }
 

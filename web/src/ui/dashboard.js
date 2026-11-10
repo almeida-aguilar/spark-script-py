@@ -41,7 +41,7 @@ export function bindDashboard(app) {
   const presets = $("#led-presets");
   for (const [name, index, color] of LED_PRESETS) {
     presets.append(h("button", {
-      class: "swatch", style: `background:${color}`, title: name, "aria-label": name,
+      class: "swatch", style: `background:${color}`, title: `${name} (índice ${index})`, "aria-label": `${name}, índice ${index}`,
       onclick: () => { $("#led-state").textContent = `índice ${index} (${name})`; app.run(`LED: ${name}`, (hub) => hub.led.index(index)); },
     }));
   }
