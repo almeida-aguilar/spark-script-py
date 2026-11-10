@@ -19,8 +19,8 @@ describe("interfaz + simulador", () => {
     expect($("#transport").value).toBe("simulated");
 
     $("#btn-connect").click();
-    for (let i = 0; i < 40 && $("#state").textContent !== "connected"; i += 1) await sleep(100);
-    expect($("#state").textContent).toBe("connected");
+    for (let i = 0; i < 40 && $("#state").textContent !== "conectado"; i += 1) await sleep(100);
+    expect($("#state").textContent).toBe("conectado");
     expect($("#hub-name").textContent).toBe("Hub simulado");
     expect($("#battery").textContent).toBe("87 %");
     expect($("#port-A").textContent).toBe("motor");
@@ -39,7 +39,7 @@ describe("interfaz + simulador", () => {
     $("#btn-estop").click();
     $("#btn-disconnect").click();
     await sleep(300);
-    expect($("#state").textContent).toBe("disconnected");
+    expect($("#state").textContent).toBe("sin conexión");
     expect($("#py-code").value).toContain("from wedopy import Hub"); // editor montado con el programa inicial
     expect($("#py-export").disabled).toBe(false); // exportación de proyecto disponible
     expect(errors).toEqual([]);

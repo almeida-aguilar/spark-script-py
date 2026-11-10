@@ -8,8 +8,8 @@
   <meta name="theme-color" content="#282a36" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#f4f5fa" media="(prefers-color-scheme: light)">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🤖%3C/text%3E%3C/svg%3E">
-  <script type="module" crossorigin src="./assets/index-Dqhr8MyU.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-DifZt2zl.css">
+  <script type="module" crossorigin src="./assets/index-BVRr0MSa.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-fN-ynYFu.css">
 </head>
 <body>
   <header class="wb-top">
@@ -31,7 +31,7 @@
     <div class="wb-right">
       <button id="btn-theme" class="icon" title="Tema del sistema">🌗</button>
       <button id="btn-hub" title="Mostrar u ocultar el panel del hub (estado, motores, sensores y LED)">⚙ Hub</button>
-      <a class="wb-doc" href="./docs/">Documentación</a>
+      <a class="wb-doc" href="./docs/" aria-label="Documentación"><span class="wb-doc-icon" aria-hidden="true">📖</span><span class="wb-doc-text">Documentación</span></a>
     </div>
   </header>
 
@@ -50,6 +50,8 @@
             <span id="py-status" class="ed-status" aria-live="polite"></span>
           </div>
           <div class="ed-io">
+            <button id="btn-font-down" class="icon font-btn" title="Reducir el tamaño del texto del código">−A</button>
+            <button id="btn-font-up" class="icon font-btn" title="Aumentar el tamaño del texto del código">A+</button>
             <button id="py-export" title="Descarga tu programa como fichero .py">⬇ Exportar</button>
             <button id="py-import" title="Carga un fichero .py en el editor">⬆ Importar</button>
           </div>

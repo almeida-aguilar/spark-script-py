@@ -145,10 +145,34 @@ h1 { font-size: 1.15rem; margin: 0; }
 .wb-right { display: flex; align-items: center; gap: .45rem; justify-self: end; }
 .wb-doc { font-size: .9rem; }
 button.icon { min-width: 2.4rem; padding: .2rem .35rem; font-size: 1.05rem; line-height: 1; }
+.font-btn { min-width: 2.5rem; font-size: .82rem; font-weight: 700; letter-spacing: -.02em; }
 #btn-hub[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
 @media (max-width: 56rem) {
   .wb-top { grid-template-columns: minmax(0, 1fr) auto; }
   .wb-center { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* -- móvil: la cabecera se apila en filas y los controles ocupan el ancho --------------- */
+@media (max-width: 40rem) {
+  /* Se respetan las muescas y la barra de inicio del móvil (safe-area insets). */
+  .wb-top {
+    padding: .5rem max(.65rem, env(safe-area-inset-right)) .5rem max(.65rem, env(safe-area-inset-left));
+    gap: .45rem .5rem;
+  }
+  .wb-brand { gap: .45rem; }
+  .wb-brand h1 { font-size: 1rem; white-space: nowrap; }
+  .wb-brand .tag { display: none; }          /* el «Web» sobra en pantallas pequeñas */
+  #state { font-size: .72rem; }
+  .wb-right { gap: .3rem; }
+  .wb-doc-text { display: none; }            /* el enlace se queda con el icono */
+  .wb-doc-icon { font-size: 1.05rem; line-height: 1; }
+  .wb-center {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .4rem; align-items: stretch;
+  }
+  .wb-center select { grid-column: 1 / -1; max-width: none; width: 100%; }
+  .wb-accept { grid-column: 1 / -1; justify-content: center; font-size: .78rem; }
+  .wb-center button { width: 100%; min-height: 2.6rem; padding: .3rem .4rem; font-size: .88rem; }
 }
 
 /* -- banners ---------------------------------------------------------------------- */
@@ -177,7 +201,8 @@ button.icon { min-width: 2.4rem; padding: .2rem .35rem; font-size: 1.05rem; line
 .drawer {
   position: fixed; top: var(--wb-top-h, 0px); right: 0; bottom: 0; z-index: 40; width: 23rem; max-width: 100%;
   background: var(--panel); border-left: 1px solid var(--line); box-shadow: -1rem 0 2.5rem var(--shadow);
-  overflow: auto; padding: 1rem .9rem; display: flex; flex-direction: column; gap: 1rem;
+  overflow: auto; padding: 1rem .9rem max(1rem, env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 1rem;
   overscroll-behavior: contain;
 }
 .drawer[hidden] { display: none; }
@@ -223,7 +248,7 @@ input[type="color"] { padding: .15rem; width: 3rem; height: 2.3rem; }
 .kv { display: grid; grid-template-columns: max-content 1fr; gap: .3rem .8rem; margin: .4rem 0; }
 .kv dt { color: var(--muted); }
 .kv dd { margin: 0; }
-.badge { padding: .05rem .55rem; border-radius: 1rem; border: 1px solid var(--line); font-size: .85rem; }
+.badge { padding: .05rem .55rem; border-radius: 1rem; border: 1px solid var(--line); font-size: .85rem; white-space: nowrap; }
 .st-disconnected { color: var(--muted); border-color: var(--line); }
 .st-connected { color: var(--green); border-color: var(--green); }
 .st-error { color: var(--danger); border-color: var(--danger); }
@@ -257,25 +282,28 @@ input[type="color"] { padding: .15rem; width: 3rem; height: 2.3rem; }
 
 .py-editor {
   flex: 1; min-height: 14rem; display: flex;
+  /* Tamaño del texto del código: por defecto 13.5px, 12px en móvil (ver la regla al final
+     del fichero) y el que elija el usuario con el botón «A». */
+  --py-fs: 13.5px;
   background: var(--bg-deep); border: 1px solid var(--line); border-radius: .5rem; overflow: hidden;
 }
 .py-editor:focus-within { border-color: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
 .py-gutter {
   flex: none; width: 3.4rem; overflow: hidden; user-select: none; text-align: right;
   background: var(--bg-deep); border-right: 1px solid var(--line);
-  padding: .6rem 0; color: var(--comment); font: 13.5px/1.55 var(--mono);
+  padding: .6rem 0; color: var(--comment); font: var(--py-fs)/1.55 var(--mono);
 }
 .py-gutter span { display: block; padding-right: .6rem; }
 .py-surface { position: relative; flex: 1; min-width: 0; }
 .py-hl {
   position: absolute; inset: 0; margin: 0; overflow: hidden; pointer-events: none;
-  padding: .6rem .75rem; white-space: pre; color: var(--fg); font: 13.5px/1.55 var(--mono); tab-size: 4;
+  padding: .6rem .75rem; white-space: pre; color: var(--fg); font: var(--py-fs)/1.55 var(--mono); tab-size: 4;
 }
 .py-input {
   position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%;
   background: transparent; color: transparent; caret-color: var(--fg);
   border: 0; outline: 0; resize: none; padding: .6rem .75rem;
-  white-space: pre; overflow: auto; font: 13.5px/1.55 var(--mono); tab-size: 4;
+  white-space: pre; overflow: auto; font: var(--py-fs)/1.55 var(--mono); tab-size: 4;
 }
 /* el texto del textarea es transparente: al seleccionar solo se pinta el fondo */
 .py-input::selection { background: var(--sel); color: transparent; }
@@ -314,4 +342,12 @@ input[type="color"] { padding: .15rem; width: 3rem; height: 2.3rem; }
   .column-card { flex: none; }
   #py-out, #console { max-height: 14rem; }
   .drawer { width: min(23rem, 100vw); }
+}
+
+/* -- móvil: el código se muestra más pequeño para que quepan más líneas ---------------- */
+@media (max-width: 40rem) {
+  .py-editor { --py-fs: 12px; }
+  .py-gutter { width: 2.7rem; }
+  .py-gutter span { padding-right: .45rem; }
+  .py-hl, .py-input { padding: .5rem .6rem; }
 }

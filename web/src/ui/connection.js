@@ -61,7 +61,15 @@ export function bindConnection(app) {
 
   function render() {
     const { state } = app;
-    els.state.textContent = state;
+    // El badge se lee en la barra superior: en la interfaz todo va en español.
+    const STATE_LABELS = {
+      disconnected: "sin conexión",
+      connecting: "conectando",
+      connected: "conectado",
+      disconnecting: "desconectando",
+      error: "error",
+    };
+    els.state.textContent = STATE_LABELS[state] ?? state;
     els.state.className = `badge st-${state}`;
     const connected = app.connected;
     els.disconnect.disabled = !(connected || app.unsafe);

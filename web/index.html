@@ -29,7 +29,7 @@
     <div class="wb-right">
       <button id="btn-theme" class="icon" title="Tema del sistema">🌗</button>
       <button id="btn-hub" title="Mostrar u ocultar el panel del hub (estado, motores, sensores y LED)">⚙ Hub</button>
-      <a class="wb-doc" href="./docs/">Documentación</a>
+      <a class="wb-doc" href="./docs/" aria-label="Documentación"><span class="wb-doc-icon" aria-hidden="true">📖</span><span class="wb-doc-text">Documentación</span></a>
     </div>
   </header>
 
@@ -48,6 +48,8 @@
             <span id="py-status" class="ed-status" aria-live="polite"></span>
           </div>
           <div class="ed-io">
+            <button id="btn-font-down" class="icon font-btn" title="Reducir el tamaño del texto del código">−A</button>
+            <button id="btn-font-up" class="icon font-btn" title="Aumentar el tamaño del texto del código">A+</button>
             <button id="py-export" title="Descarga tu programa como fichero .py">⬇ Exportar</button>
             <button id="py-import" title="Carga un fichero .py en el editor">⬆ Importar</button>
           </div>
