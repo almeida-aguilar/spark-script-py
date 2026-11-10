@@ -1,0 +1,10 @@
+title: wedopy Web
+description: Controla el LEGO WeDo 2.0 desde el navegador con Web Bluetooth
+lang: es
+
+# El sitio se publica como subdirectorio del proyecto en Pages (/wedopy/), junto a la app.
+baseurl: "/wedopy/docs"
+url: ""
+
+# Tema de GitHub Pages: aporta el layout "default" que usan los .md de esta carpeta.
+theme: jekyll-theme-cayman
