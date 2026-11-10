@@ -94,7 +94,10 @@ export function bindDashboard(app) {
 
   let polling = false;
   setInterval(async () => {
-    if (polling || !app.connected) return;
+    // Mientras hay un programa Python en marcha, el panel no sondea los sensores: el
+    // inclinómetro solo admite un formato a la vez y el sondeo reconfiguraría el sensor
+    // mientras el programa lee su ángulo (dirección vs. ángulo).
+    if (polling || !app.connected || app.python?.running) return;
     polling = true;
     try {
       const ports = app.hub.ports;

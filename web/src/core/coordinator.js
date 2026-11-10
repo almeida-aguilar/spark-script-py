@@ -25,6 +25,10 @@ import { Watchdog } from "./watchdog.js";
 
 const keyOf = (typ, mode) => `${typ}/${mode}`;
 
+// Cuántas veces puede un lector re-afirmar su formato antes de rendirse: sin tope, dos
+// lectores que reclaman formatos distintos se roban el sensor en bucle.
+const MAX_REASSERTS = 3;
+
 export class Coordinator extends Emitter {
   static STOP_PROFILE = "nobarrier";
 
@@ -486,13 +490,18 @@ export class Coordinator extends Emitter {
    * Configura el sensor una vez y devuelve el último valor recibido. El hub solo notifica
    * cuando el valor cambia, así que un valor sin cambios sigue siendo válido mientras el
    * enlace esté activo.
+   *
+   * Varios lectores pueden compartir la misma conexión (por ejemplo, el panel sondea el
+   * inclinómetro mientras un programa lee su ángulo). Si otro lector reconfigura la
+   * conexión con otro formato, aquí se re-afirma el propio en vez de fallar: el
+   * dispositivo no ha cambiado, solo el formato solicitado.
    */
   async readSensor(conn, typ, mode, unit, expectedLen = null, timeout = null) {
     this.checkUsable();
     this._requireDevice(conn, typ);
     const wait = timeout ?? this.timing.sensorTimeout;
     const key = keyOf(typ, mode);
-    if (this._modes.get(conn) !== key) {
+    const configure = async () => {
       this._samples.delete(conn);
       this._modes.set(conn, key);
       try {
@@ -502,13 +511,24 @@ export class Coordinator extends Emitter {
         if (this._modes.get(conn) === key) this._modes.delete(conn);
         throw exc;
       }
-    }
+    };
+    if (this._modes.get(conn) !== key) await configure();
     const deadline = now() + wait;
+    let reasserts = 0;
     for (;;) {
       const exc = this._unusable();
       if (exc) throw exc;
       if (!this._ports.has(conn)) throw new DeviceNotFoundError(`the device on connect id ${conn} was disconnected`);
-      if (this._modes.get(conn) !== key) throw new DeviceNotFoundError(`the device on connect id ${conn} changed`);
+      if (this._modes.get(conn) !== key && reasserts < MAX_REASSERTS) {
+        // Otro lector reconfiguró esta conexión con otro formato (p. ej. el panel pide la
+        // dirección mientras un programa lee el ángulo). Re-afirmamos el nuestro, pero solo
+        // unas pocas veces: dos lectores que se re-afirman sin fin se ROBan el sensor en
+        // bucle y ninguno recibe su valor.
+        reasserts++;
+        await configure();
+        if (now() >= deadline) throw new OperationTimeout(`the hub sent no value within ${wait.toFixed(1)} s`);
+        continue;
+      }
       const value = this._samples.get(conn);
       if (value && (expectedLen === null || value.length === expectedLen)) return value;
       const remaining = deadline - now();

@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
+import * as K from "../src/core/constants.js";
 import { BLEError, DeviceNotFoundError, OperationTimeout } from "../src/core/errors.js";
+import { inputFormat } from "../src/core/protocol.js";
 import { makeHub, sleep } from "./helpers.js";
 
 let hub, sim;
@@ -108,5 +110,25 @@ describe("TiltSensor", () => {
     await t.readAngle();
     hub._session.core._samples.set(2, Uint8Array.of(1, 2, 3, 4, 5, 6, 7, 8, 9));
     await expect(t.readAngle()).rejects.toBeInstanceOf(OperationTimeout);
+  });
+
+  it("otro lector del mismo sensor no invalida la lectura (modo dirección vs. ángulo)", async () => {
+    // El panel sondea la dirección mientras un programa lee el ángulo: el sensor solo
+    // admite un formato a la vez, así que la lectura debe re-afirmar el suyo en vez de
+    // fallar con "the device on connect id N changed".
+    await setup({ B: "tilt" }, { silentSensors: true });
+    const t = hub.tiltSensor();
+    const core = hub._session.core;
+    sim.setTiltAngle(-13, -26);
+    const pending = t.readAngle();      // en espera: el simulador no emite nada
+    pending.catch(() => {});
+    await sleep(0.05);
+    // Otro lector (el panel) deja el sensor configurado en modo dirección.
+    await core._call("write", [K.CHAR_INPUT_CMD, inputFormat(2, K.TYPE_TILT, K.TILT_DIRECTION, 1, K.UNIT_SI, true)]);
+    core._modes.set(2, `${K.TYPE_TILT}/${K.TILT_DIRECTION}`);
+    await sleep(0.05);
+    sim.silentSensors = false;
+    sim.setTiltDirection("neutral");    // llega un valor de dirección y despierta la lectura
+    await expect(pending).resolves.toEqual([-13, -26]);
   });
 });
