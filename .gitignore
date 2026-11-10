@@ -5,3 +5,7 @@ web/node_modules/.cache/
 # Ficheros temporales
 *.log
 .DS_Store
+
+# Contexto de trabajo no versionado
+/nueva_api/
+/contexto/
