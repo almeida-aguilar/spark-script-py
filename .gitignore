@@ -9,3 +9,4 @@ web/node_modules/.cache/
 # Contexto de trabajo no versionado
 /nueva_api/
 /contexto/
+/AGENTS.md
