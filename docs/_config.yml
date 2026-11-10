@@ -1,10 +1,24 @@
-title: wedopy Web
-description: Controla el LEGO WeDo 2.0 desde el navegador con Web Bluetooth
+title: wedopy
+tagline: Control de LEGO WeDo 2.0 Smart Hub con Python y Cython
+description: Biblioteca Python de alto rendimiento para el LEGO WeDo 2.0 Smart Hub sobre Bluetooth Low Energy (BLE).
+# La documentación se publica en https://almeida-aguilar.github.io/wedopy-web/docs/
+baseurl: "/wedopy-web/docs"
+url: "https://almeida-aguilar.github.io"
+github_repo: "https://github.com/almeida-aguilar/wedopy"
+web_app_url: "https://almeida-aguilar.github.io/wedopy-web/"
+version: "0.1.0"
 lang: es
 
-# El sitio se publica como subdirectorio del proyecto en Pages (/wedopy/), junto a la app.
-baseurl: "/wedopy-web/docs"
-url: ""
+markdown: kramdown
+highlighter: rouge
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+  auto_ids: true
 
-# Tema de GitHub Pages: aporta el layout "default" que usan los .md de esta carpeta.
-theme: jekyll-theme-cayman
+plugins:
+  - jekyll-relative-links
+
+relative_links:
+  enabled: true
+  collections: true

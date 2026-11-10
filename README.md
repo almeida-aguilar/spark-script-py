@@ -88,14 +88,25 @@ web/
     python/             # runtime Pyodide (runtime.js) + paquete Python wedopy/*.py
   tests/                # vitest: protocolo, estado, tareas, sensores, BLE, UI, editor Python
   scripts/              # copy-pyodide.mjs
-docs/                   # documentación (web.md, web-migracion.md, web-seguridad.md)
+docs/                   # documentación de usuario (Jekyll → se publica en /wedopy-web/docs/)
+dev-docs/               # documentación de desarrollo (no se publica)
 ```
 
 ## Documentación
 
-- [`docs/web.md`](docs/web.md) — guía de la aplicación y del editor.
-- [`docs/web-migracion.md`](docs/web-migracion.md) — arquitectura y equivalencias con la biblioteca.
-- [`docs/web-seguridad.md`](docs/web-seguridad.md) — seguridad: watchdog, parada de emergencia
+**Usuario** — se publica en [`docs/`](docs/) (Jekyll) y llega desde el enlace «Documentación»
+de la app:
+
+- [Introducción](docs/index.md) · [Instalación](docs/instalacion.md) · [Guía rápida](docs/guia-rapida.md)
+- [Hardware WeDo 2.0](docs/hardware.md) · [Ejemplos prácticos](docs/ejemplos.md)
+- [Referencia de la API](docs/api/index.md) — hub, motores, sensores, periféricos, tareas, excepciones, tiempo
+- [Arquitectura y seguridad](docs/arquitectura.md) · [Solución de problemas](docs/solucion-problemas.md)
+
+**Desarrollo** — en [`dev-docs/`](dev-docs/), solo en el repositorio:
+
+- [`dev-docs/web.md`](dev-docs/web.md) — guía de la aplicación y del editor.
+- [`dev-docs/web-migracion.md`](dev-docs/web-migracion.md) — arquitectura y equivalencias con la biblioteca.
+- [`dev-docs/web-seguridad.md`](dev-docs/web-seguridad.md) — seguridad: watchdog, parada de emergencia
   y límites propios del navegador.
 
 ## Licencia
