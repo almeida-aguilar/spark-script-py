@@ -70,8 +70,8 @@ with Hub() as hub:
         finally:
             motor.stop()
 
-    hub.task.spawn(drive)
-    drive.join()
+    drive_task = hub.task.spawn(drive)
+    drive_task.join()
     hub.led.color("light_green")
 ```
 
