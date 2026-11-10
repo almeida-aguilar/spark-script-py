@@ -6,7 +6,7 @@ baseurl: "/wedopy-web/docs"
 url: "https://almeida-aguilar.github.io"
 github_repo: "https://github.com/almeida-aguilar/wedopy"
 web_app_url: "https://almeida-aguilar.github.io/wedopy-web/"
-version: "0.1.0"
+version: "0.2.0"
 lang: es
 
 markdown: kramdown
