@@ -29,6 +29,7 @@ export class PythonRuntime {
     this._stop = false;
     this._running = false;
     this._sleepers = new Set();
+    this._current = null;
   }
 
   get running() { return this._running; }
@@ -73,12 +74,32 @@ export class PythonRuntime {
     return py;
   }
 
-  /** Ejecuta un programa. Devuelve `{ ok, stopped, error }`; nunca lanza por errores del programa. */
+  /**
+   * Ejecuta un programa. Devuelve `{ ok, stopped, error }`; nunca lanza por errores del programa.
+   * Solo puede haber un script a la vez: si ya hay uno en marcha, se interrumpe (igual que con
+   * el botón «Detener»), se espera a que termine su limpieza (parada de motores incluida) y
+   * después arranca el nuevo, al estilo del editor de micro:bit.
+   */
   async run(code) {
-    if (this._running) throw new Error("ya hay un programa en ejecución");
+    if (this._running) {
+      this.stop();
+      try { await this._current; } catch { /* el error ya se notificó en su salida */ }
+      this._stop = false;
+    }
     await this.init();
+    // Carrera de dos lanzamientos casi simultáneos: tras la inicialización se re-comprueba.
+    if (this._running) {
+      this.stop();
+      try { await this._current; } catch { /* ya notificado */ }
+      this._stop = false;
+    }
     this._running = true;
     this._stop = false;
+    this._current = this._execute(code);
+    return this._current;
+  }
+
+  async _execute(code) {
     const globals = this.py.globals.get("dict")();
     try {
       await this.py.runPythonAsync(code, { globals });

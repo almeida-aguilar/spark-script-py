@@ -1,4 +1,5 @@
 // Panel de conexión: transporte, conectar/desconectar, estado, batería y puertos.
+// El panel del hub vive en un cajón oculto por defecto (⚙ Hub) que se abre al conectar.
 import { webBluetoothProblem } from "../index.js";
 import { $, setEnabled } from "./components/dom.js";
 
@@ -8,6 +9,28 @@ export function bindConnection(app) {
     state: $("#state"), name: $("#hub-name"), battery: $("#battery"), estop: $("#btn-estop"),
     compat: $("#compat"), unsafe: $("#unsafe"),
   };
+  const hubBtn = $("#btn-hub"), drawer = $("#hub-drawer"), hubClose = $("#hub-close");
+
+  const setOpen = (open) => {
+    drawer.hidden = !open;
+    hubBtn.setAttribute("aria-expanded", String(open));
+  };
+  setOpen(false);
+  hubBtn.addEventListener("click", () => setOpen(drawer.hidden));
+  hubClose.addEventListener("click", () => setOpen(false));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !drawer.hidden) setOpen(false);
+  });
+
+  // El cajón queda justo debajo de la barra superior: se mide su altura real (y su
+  // reflow al envolverse) con un ResizeObserver, no se supone una altura fija.
+  // (Si el navegador no lo soporta, queda anclado arriba como hasta ahora.)
+  const header = document.querySelector(".wb-top");
+  if (header && typeof ResizeObserver === "function") {
+    const syncTop = () => drawer.style.setProperty("--wb-top-h", `${header.offsetHeight}px`);
+    syncTop();
+    new ResizeObserver(syncTop).observe(header);
+  }
 
   // Detección de compatibilidad: nunca se asume Web Bluetooth.
   const problem = webBluetoothProblem();
@@ -22,6 +45,7 @@ export function bindConnection(app) {
 
   els.connect.addEventListener("click", async () => {
     busy(true);
+    setOpen(true); // muestra el estado de la conexión con el hub
     els.connect.textContent = "Conectando…";
     try {
       // connect() se invoca directamente desde el clic: Web Bluetooth exige un gesto del usuario.

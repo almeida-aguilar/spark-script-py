@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>wedopy Web · LEGO WeDo 2.0 desde el navegador</title>
+  <meta name="description" content="Controla un LEGO WeDo 2.0 Smart Hub con Web Bluetooth, sin instalar nada.">
+  <meta name="theme-color" content="#282a36" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4f5fa" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🤖%3C/text%3E%3C/svg%3E">
+  <script type="module" crossorigin src="/wedopy/assets/index-CLOzg6C_.js"></script>
+  <link rel="stylesheet" crossorigin href="/wedopy/assets/index-CyiVbaz2.css">
+</head>
+<body>
+  <header class="wb-top">
+    <div class="wb-brand">
+      <span class="wb-logo" aria-hidden="true">🤖</span>
+      <h1>wedopy <span class="tag">Web</span></h1>
+      <span id="state" class="badge st-disconnected">disconnected</span>
+    </div>
+    <nav class="wb-center" aria-label="Conexión del hub">
+      <select id="transport" aria-label="Transporte">
+        <option value="web-bluetooth">Web Bluetooth (hub real)</option>
+        <option value="simulated">Simulador (sin hardware)</option>
+      </select>
+      <label class="inline wb-accept" title="Si el selector sale vacío: lista todos los dispositivos BLE"><input type="checkbox" id="accept-all"> Todos los dispositivos</label>
+      <button id="btn-connect" class="primary">Conectar</button>
+      <button id="btn-disconnect" disabled>Desconectar</button>
+      <button id="btn-estop" class="danger" disabled title="Parada de emergencia: detiene tareas y motores">⏹ Parar</button>
+    </nav>
+    <div class="wb-right">
+      <button id="btn-theme" class="icon" title="Tema del sistema">🌗</button>
+      <button id="btn-hub" title="Mostrar u ocultar el panel del hub (estado, motores, sensores y LED)">⚙ Hub</button>
+      <a class="wb-doc" href="./docs/">Documentación</a>
+    </div>
+  </header>
+
+  <div id="compat" class="banner" hidden></div>
+  <div id="unsafe" class="banner danger" role="alert" hidden></div>
+
+  <div id="layout">
+    <!-- Izquierda: editor -->
+    <section id="left">
+      <article class="card column-card" id="card-python" aria-labelledby="h-py">
+        <h2 id="h-py" class="visually-hidden">Editor Python</h2>
+        <div class="ed-toolbar">
+          <div class="ed-run">
+            <button id="py-run" class="primary big" title="Ejecutar (Ctrl+Intro). Si hay otro programa en marcha, se interrumpe y pasa a este.">▶ Ejecutar</button>
+            <button id="py-stop" class="danger" disabled title="Interrumpe el programa (como Ctrl+C)">⏹ Detener</button>
+            <span id="py-status" class="ed-status" aria-live="polite"></span>
+          </div>
+          <div class="ed-io">
+            <button id="py-export" title="Descarga tu programa como fichero .py">⬇ Exportar</button>
+            <button id="py-import" title="Carga un fichero .py en el editor">⬆ Importar</button>
+          </div>
+        </div>
+        <div id="py-editor" class="py-editor" role="group" aria-label="Editor de código Python"></div>
+        <p class="hint ed-hint">Un script a la vez: <kbd>▶ Ejecutar</kbd> interrumpe el programa anterior y arranca el nuevo (<kbd>Ctrl</kbd>+<kbd>Intro</kbd> también ejecuta). Requiere un hub conectado: usa el botón <code>⚙ Hub</code> de arriba.</p>
+      </article>
+    </section>
+
+    <!-- Derecha: arriba la salida del programa, abajo la consola de eventos -->
+    <section id="right">
+      <article class="card column-card" id="card-output" aria-label="Salida del programa">
+        <h2>Salida</h2>
+        <pre id="py-out" aria-live="polite"></pre>
+      </article>
+      <article class="card column-card" id="card-console" aria-labelledby="h-console">
+        <h2 id="h-console">Consola <button id="console-clear" class="small">Limpiar</button></h2>
+        <ol id="console" aria-live="polite"></ol>
+      </article>
+    </section>
+  </div>
+
+  <!-- Panel del hub: oculto por defecto, se abre con «⚙ Hub» (o al conectar) -->
+  <aside id="hub-drawer" class="drawer" hidden aria-label="Panel del hub">
+    <button id="hub-close" class="drawer-close" title="Cerrar el panel del hub">✕</button>
+    <section class="card" id="card-connection" aria-labelledby="h-conn">
+      <h2 id="h-conn">Estado</h2>
+      <dl class="kv">
+        <dt>Nombre</dt><dd id="hub-name">—</dd>
+        <dt>Batería</dt><dd id="battery">—</dd>
+        <dt>Puerto A</dt><dd id="port-A">—</dd>
+        <dt>Puerto B</dt><dd id="port-B">—</dd>
+      </dl>
+    </section>
+
+    <section class="card" id="card-motors" aria-labelledby="h-motors">
+      <h2 id="h-motors">Motores</h2>
+      <div id="motors"></div>
+    </section>
+
+    <section class="card" id="card-sensors" aria-labelledby="h-sensors">
+      <h2 id="h-sensors">Sensores</h2>
+      <dl class="kv">
+        <dt>Distancia</dt><dd><meter id="dist-meter" min="0" max="10" value="0"></meter> <span id="dist">—</span></dd>
+        <dt>Inclinación</dt><dd><span id="tilt">—</span></dd>
+        <dt>Botón</dt><dd><span id="button" class="badge">—</span></dd>
+      </dl>
+      <p class="hint">Los sensores solo notifican cambios: mueve o inclina el sensor tras conectar.</p>
+    </section>
+
+    <section class="card" id="card-led" aria-labelledby="h-led">
+      <h2 id="h-led">LED</h2>
+      <div class="row">
+        <label>Color RGB <input type="color" id="led-rgb" value="#00ff40"></label>
+        <button id="led-off">Apagar</button>
+      </div>
+      <div id="led-presets" class="swatches" role="group" aria-label="Colores predefinidos"></div>
+      <p class="hint">Estado: <span id="led-state">—</span></p>
+    </section>
+
+    <section class="card" id="card-sim" aria-labelledby="h-sim" hidden>
+      <h2 id="h-sim">Simulador</h2>
+      <label>Puerto A <select id="sim-A"><option value="">—</option><option>motor</option><option>distance</option><option>tilt</option></select></label>
+      <label>Puerto B <select id="sim-B"><option value="">—</option><option>motor</option><option>distance</option><option>tilt</option></select></label>
+      <label>Distancia <input type="range" id="sim-dist" min="0" max="10" step="1" value="10"></label>
+      <label>Inclinación
+        <select id="sim-tilt"><option>neutral</option><option>back</option><option>right</option><option>left</option><option>forward</option></select>
+      </label>
+      <div class="stack">
+        <button id="sim-press">Pulsar botón</button>
+        <button id="sim-drop" class="danger">Perder enlace</button>
+        <label class="inline"><input type="checkbox" id="sim-freeze"> Hub sin responder</label>
+      </div>
+    </section>
+  </aside>
+
+</body>
+</html>

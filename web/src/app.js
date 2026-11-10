@@ -16,7 +16,6 @@ export class App extends Emitter {
     this.state = HubState.DISCONNECTED;
     this.activeMotors = new Map(); // conn -> velocidad (para la seguridad al ocultar la pestaña)
     this._unsub = null;
-    this._example = null;
     this.simDevices = { A: "motor", B: "distance" };
     this.simDistance = 10;
   }
@@ -63,7 +62,6 @@ export class App extends Emitter {
   async disconnect() {
     const hub = this.hub;
     if (!hub) return;
-    this.stopExample();
     try {
       const confirmed = await hub.disconnect();
       this._log(confirmed ? "info" : "warn", confirmed ? "Desconectado." : "Desconectado, pero la parada de motores no pudo confirmarse.");
@@ -107,55 +105,6 @@ export class App extends Emitter {
       this._log("warn", "La pestaña se ocultó con motores en marcha: se envía parada (los temporizadores del navegador pueden retrasarse).");
       await this.emergencyStop();
     }
-  }
-
-  // -- ejemplos (usan la API pública) ---------------------------------------------
-
-  startExample(name) {
-    const hub = this.hub;
-    if (!hub || !this.connected || this._example) return;
-    const ports = hub.ports;
-    const motorPort = Object.keys(ports).find((p) => ports[p] === "motor");
-    const distPort = Object.keys(ports).find((p) => ports[p] === "distance");
-    const sleepLed = async (ctx) => {
-      for (;;) {
-        await hub.led.rgb(0, 255, 64); await ctx.sleep(0.4);
-        await hub.led.off(); await ctx.sleep(0.4);
-      }
-    };
-    if (name === "blink") {
-      if (!motorPort) { this._log("warn", "Este ejemplo necesita un motor en el puerto A o B."); return; }
-      hub.tasks.add(sleepLed, { background: true });
-      hub.tasks.add(async (ctx) => {
-        const motor = hub.motor(motorPort);
-        try {
-          await motor.run(50); await ctx.sleep(1.5);
-          await motor.run(-50); await ctx.sleep(1.5);
-        } finally { await motor.stop(); }
-      });
-    } else if (name === "avoid") {
-      if (!motorPort || !distPort) { this._log("warn", "Este ejemplo necesita un motor y un sensor de distancia."); return; }
-      hub.tasks.add(async (ctx) => {
-        const motor = hub.motor(motorPort);
-        const dist = hub.distanceSensor(distPort);
-        try {
-          for (;;) {
-            const d = await dist.read();
-            await motor.run(d < 4 ? -40 : 40); // retrocede si hay un obstáculo cerca
-            await ctx.sleep(0.15);
-          }
-        } finally { await motor.stop(); }
-      });
-    }
-    this._log("info", `Ejemplo «${name}» en marcha.`);
-    this.emit("example", { running: true });
-    this._example = hub.tasks.wait()
-      .catch((exc) => this._log("error", `Ejemplo: ${exc.message}`))
-      .finally(() => { this._example = null; this._log("info", "Ejemplo terminado."); this.emit("example", { running: false }); });
-  }
-
-  stopExample() {
-    if (this._example && this.hub) this.hub.tasks.cancel();
   }
 
   // -- eventos del núcleo -----------------------------------------------------------

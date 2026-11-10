@@ -1,13 +1,46 @@
-// Editor Python: textarea + ejemplos + Ejecutar/Detener. La ejecución vive en python/runtime.js.
+// Editor Python: resaltado con tema según el navegador + Ejecutar/Detener + exportar/importar
+// .py + salida. La ejecución vive en python/runtime.js: solo puede haber un script en marcha;
+// al lanzar uno nuevo, el anterior se interrumpe.
 import { PythonRuntime, browserLoader } from "../python/runtime.js";
+import { createPythonEditor } from "./editor.js";
+import { exportProgram, importProgram } from "./project.js";
 import { $, h } from "./components/dom.js";
 
-const EXAMPLES = import.meta.glob("../python/examples/*.py", { query: "?raw", import: "default", eager: true });
 const STORE_KEY = "wedopy.python.program";
+const EXPORT_NAME = "mi_programa.py";
+
+// Programa inicial (parpadeo + marcha con tareas cooperativas, como el ejemplo de la biblioteca).
+const DEFAULT_PROGRAM = `"""Blink the LED while a motor runs, using cooperative tasks (no threads, no asyncio)."""
+from wedopy import Hub, task
+
+with Hub() as hub:
+    def blink():
+        while True:
+            hub.led.index(6)
+            yield task.sleep(0.3)
+            hub.led.index(9)
+            yield task.sleep(0.3)
+
+    def move():
+        motor = hub.motor("A")
+        try:                      # cancelling a task never stops the motor by itself
+            motor.run(75)
+            yield task.sleep(3)
+        finally:
+            motor.stop()
+
+    hub.tasks.add(blink, background=True)   # does not keep wait() alive
+    hub.tasks.add(move)
+    hub.tasks.wait()                        # returns when move() ends; blink is cancelled
+`;
 
 export function bindPython(app, { runtime } = {}) {
-  const code = $("#py-code"), out = $("#py-out"), status = $("#py-status");
-  const runBtn = $("#py-run"), stopBtn = $("#py-stop"), select = $("#py-example");
+  const out = $("#py-out"), status = $("#py-status");
+  const runBtn = $("#py-run"), stopBtn = $("#py-stop");
+
+  const save = (text) => { try { localStorage.setItem(STORE_KEY, text); } catch { /* sin almacenamiento */ } };
+
+  const editor = createPythonEditor({ host: $("#py-editor"), onChange: (v) => save(v) });
 
   const append = (stream, text) => {
     out.append(h("span", { class: stream === "stderr" ? "err" : "" }, text.endsWith("\n") ? text : `${text}\n`));
@@ -21,45 +54,54 @@ export function bindPython(app, { runtime } = {}) {
   });
   app.python = rt;
 
-  // Ejemplos (los de la biblioteca Python) y programa guardado
-  select.append(h("option", { value: "" }, "Mi programa"));
-  for (const path of Object.keys(EXAMPLES)) {
-    const name = path.split("/").pop().replace(".py", "");
-    select.append(h("option", { value: path }, `${name}.py`));
-  }
+  // Programa guardado (o el inicial)
   let saved = "";
   try { saved = localStorage.getItem(STORE_KEY) ?? ""; } catch { /* almacenamiento no disponible */ }
-  code.value = saved || EXAMPLES[Object.keys(EXAMPLES).find((p) => p.endsWith("blink_and_move.py"))] || "";
-  code.addEventListener("input", () => {
-    select.value = "";
-    try { localStorage.setItem(STORE_KEY, code.value); } catch { /* sin almacenamiento */ }
-  });
-  select.addEventListener("change", () => { if (select.value) code.value = EXAMPLES[select.value]; });
+  editor.setValue(saved || DEFAULT_PROGRAM);
 
-  // Tab inserta 4 espacios (no cambia el foco)
-  code.addEventListener("keydown", (e) => {
-    if (e.key !== "Tab") return;
-    e.preventDefault();
-    const { selectionStart: a, selectionEnd: b } = code;
-    code.setRangeText("    ", a, b, "end");
-    code.dispatchEvent(new Event("input"));
+  // Proyecto: exportar/importar .py
+  $("#py-export").addEventListener("click", () => {
+    exportProgram(editor.getValue(), EXPORT_NAME);
+    status.textContent = `Programa exportado como ${EXPORT_NAME}`;
+  });
+  $("#py-import").addEventListener("click", () => {
+    importProgram((text, filename) => {
+      editor.setValue(text);
+      save(text);
+      status.textContent = `Importado «${filename}» — listo para ejecutar.`;
+    }, (exc) => {
+      status.textContent = "";
+      append("stderr", `Importación: ${exc.message}\n`);
+    });
   });
 
-  runBtn.addEventListener("click", async () => {
+  // Ejecutar: si hay otro programa en marcha, rt.run lo interrumpe y lo espera antes de arrancar.
+  let runSeq = 0;
+  runBtn.addEventListener("click", () => {
+    const seq = ++runSeq;
+    const wasRunning = rt.running;
     out.replaceChildren();
-    runBtn.disabled = true; stopBtn.disabled = false;
-    try {
-      await rt.init((msg) => { status.textContent = msg; });
-      status.textContent = "Ejecutando…";
-      const r = await rt.run(code.value);
+    stopBtn.disabled = false;
+    if (wasRunning) append("stderr", "⏹ se interrumpe el programa anterior…\n");
+    status.textContent = wasRunning ? "Interrumpiendo el programa anterior…" : "Ejecutando…";
+    rt.run(editor.getValue()).then((r) => {
+      if (seq !== runSeq) return; // hay una ejecución más reciente
       status.textContent = r.stopped ? "Detenido." : r.ok ? "Terminado." : "Terminó con error.";
+      stopBtn.disabled = true;
       if (r.stopped) append("stdout", "[programa detenido]");
-    } catch (exc) {
+    }).catch((exc) => {
+      if (seq !== runSeq) return;
       status.textContent = "";
       append("stderr", exc.message);
-    } finally {
-      runBtn.disabled = false; stopBtn.disabled = true;
-    }
+      stopBtn.disabled = true;
+    });
   });
   stopBtn.addEventListener("click", () => { rt.stop(); app.hub?.tasks?.cancel?.(); });
+
+  // Ctrl/Cmd+Intro ejecuta (como el botón ▶)
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || !(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    runBtn.click();
+  });
 }

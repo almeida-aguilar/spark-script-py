@@ -5,6 +5,8 @@ import { createConsole } from "./ui/console.js";
 import { bindDashboard } from "./ui/dashboard.js";
 import { bindPython } from "./ui/python.js";
 import { bindSimulator } from "./ui/simulator.js";
+import { bindThemeButton } from "./ui/theme.js";
+import { $ } from "./ui/components/dom.js";
 
 const app = new App();
 const con = createConsole();
@@ -14,6 +16,7 @@ bindConnection(app);
 bindDashboard(app);
 bindSimulator(app);
 bindPython(app);
+bindThemeButton($("#btn-theme"));
 
 // Seguridad: los temporizadores de una pestaña oculta pueden retrasarse.
 document.addEventListener("visibilitychange", () => { if (document.hidden) app.onHidden(); });

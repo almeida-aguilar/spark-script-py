@@ -9,9 +9,13 @@ export default ({ command }) => ({
   test: {
     environment: "node",
     include: ["tests/**/*.test.js"],
-    // Pyodide necesita JSPI para run_sync; Node 22 lo expone con este flag (Node 24 lo trae activo).
+    // Pyodide necesita JSPI para run_sync; Node 22 lo expone con este flag, Node >= 24 lo trae activo.
     pool: "forks",
-    poolOptions: { forks: { execArgv: ["--experimental-wasm-jspi"] } },
+    poolOptions: {
+      forks: {
+        execArgv: Number(process.versions.node.split(".")[0]) < 24 ? ["--experimental-wasm-jspi"] : [],
+      },
+    },
     testTimeout: 30000,
   },
 });

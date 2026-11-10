@@ -29,6 +29,12 @@ await hub.tasks.wait();
 
 Más: [arquitectura y equivalencias](web-migracion.html) · [seguridad](web-seguridad.html).
 
+## Editor
+
+El editor de Python de la app usa resaltado estilo Dracula y carga los mismos ejemplos de la biblioteca. Solo
+ejecuta un script a la vez: cada «▶ Ejecutar» interrumpe el programa anterior (parada de motores incluida) y
+arranca el nuevo. El proyecto se **exporta** como fichero `.py` (botón «⬇ Exportar») y se recupera con «⬆ Importar».
+
 ## Desarrollo
 
 ```bash

@@ -1,4 +1,4 @@
-// Motores, sensores, LED y ejemplos. Solo presentación: toda acción pasa por `app.run`.
+// Motores, sensores y LED. Solo presentación: toda acción pasa por `app.run`.
 import { $, h, setEnabled } from "./components/dom.js";
 
 const LED_PRESETS = [
@@ -23,7 +23,9 @@ export function bindDashboard(app) {
     stop.addEventListener("click", () => { slider.value = 0; out.textContent = "0"; app.run(`Motor ${port}: parar`, (hub) => hub.motor(port).stop()); });
     rev.addEventListener("click", () => { slider.value = -slider.value; out.textContent = slider.value; });
     motorsRoot.append(h("div", { class: "motor", "data-port": port },
-      h("strong", {}, `Motor ${port}`), h("span", { class: "dev", id: `dev-${port}` }, ""), slider, out, rev, run, stop));
+      h("div", { class: "motor-head" },
+        h("strong", {}, `Motor ${port}`), h("span", { class: "dev", id: `dev-${port}` }, "")),
+      slider, out, rev, run, stop));
     motorUi[port] = { slider, run, stop, rev };
   }
   const groupRun = h("button", { class: "primary" }, "Grupo A+B: girar");
@@ -50,11 +52,6 @@ export function bindDashboard(app) {
   });
   $("#led-off").addEventListener("click", () => { $("#led-state").textContent = "apagado"; app.run("LED: apagar", (hub) => hub.led.off()); });
 
-  // Ejemplos
-  $("#ex-blink").addEventListener("click", () => app.startExample("blink"));
-  $("#ex-avoid").addEventListener("click", () => app.startExample("avoid"));
-  $("#ex-stop").addEventListener("click", () => app.stopExample());
-
   // Estado habilitado/deshabilitado según conexión y puertos
   const controls = () => [
     ...Object.values(motorUi).flatMap((m) => [m.slider, m.run, m.stop, m.rev]),
@@ -70,15 +67,11 @@ export function bindDashboard(app) {
     }
     const motors = ["A", "B"].filter((p) => ports[p] === "motor").length;
     setEnabled([groupRun, groupStop], on && motors === 2);
-    setEnabled([$("#ex-blink"), $("#ex-avoid")], on && !running);
-    $("#ex-stop").disabled = !(on && running);
   }
-  let running = false;
 
   app.subscribe((type, d) => {
     if (type === "state") renderEnabled();
     if (type === "ports") renderEnabled(d.ports);
-    if (type === "example") { running = d.running; renderEnabled(); }
     if (type === "motor") {
       const port = d.conn === 1 ? "A" : d.conn === 2 ? "B" : null;
       if (port && d.speed === 0 && Number(motorUi[port].slider.value) !== 0) { /* el control conserva el último valor elegido */ }
