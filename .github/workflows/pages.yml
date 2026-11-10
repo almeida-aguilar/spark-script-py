@@ -83,8 +83,9 @@ jobs:
           ls dist/assets/*.js dist/assets/*.css
           test -f dist/pyodide/pyodide.asm.wasm       # runtime de Python autoalojado
           test -f dist/pyodide/pyodide.mjs
-          grep -q 'base="./"' dist/index.html          # rutas relativas (base './' de Vite)
+          grep -Eq 'src="\./assets/[^"]+\.js' dist/index.html   # rutas relativas
           grep -Eq 'href="\./assets/[^"]+\.css' dist/index.html
+          ! grep -q '/wedopy/assets/' dist/index.html      # ninguna ruta absoluta heredada
           ! grep -q 'src="/src/' dist/index.html      # sin rutas de desarrollo
 
       - uses: actions/upload-pages-artifact@v5
