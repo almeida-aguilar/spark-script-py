@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Solución de Problemas
-description: Guía de diagnóstico y resolución de errores comunes con wedopy y WeDo 2.0
+description: Guía de diagnóstico y resolución de errores comunes con el paquete wedo y WeDo 2.0
 prev:
   title: Ejemplos Prácticos
   url: /ejemplos.html
@@ -15,7 +15,7 @@ Esta guía recopila las dudas, errores frecuentes y procedimientos de diagnósti
 
 ## ❓ Errores frecuentes y soluciones
 
-### 1. `HubConnectionError`: No se encuentra ningún Smart Hub
+### 1. `ConnectionFailedError`: No se encuentra ningún Smart Hub
 
 **Causa probable:** El ordenador no detecta el paquete de anuncio BLE emitido por el Smart Hub.
 
@@ -28,90 +28,105 @@ Esta guía recopila las dudas, errores frecuentes y procedimientos de diagnósti
    bluetoothctl power on
    bluetoothctl scan on
    ```
-   Deberías ver aparecer un dispositivo con nombre similar a `LPF2 Smart Hub` o `WeDo 2.0`.
+   Deberías ver aparecer un dispositivo con nombre similar a `LPF2 Smart Hub 2.0` o `LPF2 Smart Hub 3.0`.
 4. **Permisos en Linux:** Asegúrate de que tu usuario pertenezca al grupo `bluetooth`:
    ```bash
    sudo usermod -aG bluetooth $USER
    ```
    Reinicia la sesión si acabas de agregarlo.
 
+Si la conexión tarda en completarse (hub en modo emparejamiento lento), da más margen al bloque `with`:
+
+```python
+with Hub(connect_timeout=30) as hub:  # 30 segundos en lugar de 10
+    ...
+```
+
 ---
 
-### 2. `OperationTimeout`: Tiempo de espera agotado al leer un sensor
+### 2. `NotConnectedError`: el hub no está conectado
 
-**Causa:** El firmware del sensor WeDo 2.0 opera por **notificación ante cambios** (_delta_).
+**Causa:** Se usó un recurso (motor, sensor, LED, botón) cuando el hub no está conectado, o el enlace se perdió durante la ejecución.
 
 **Solución:**
 
-- Si el sensor de inclinación o distancia permanece completamente inmóvil, el Smart Hub no genera paquetes BLE repetidos. Mueve el sensor con la mano o coloca un objeto frente al sensor de distancia para provocar una nueva lectura.
-- Si el problema persiste, comprueba que el conector LPF2 esté firmemente encajado en el puerto.
+- Usa siempre el hub dentro del bloque `with`, o llama a `hub.connect()` y espera con `hub.wait_connection(10)` antes de operar.
+- Si el enlace se perdió a mitad de programa (pilas agotadas, distancia excesiva), las esperas en curso terminan con `NotConnectedError`. Reconecta el hub y vuelve a dar las órdenes a los motores: **la API no reenvía órdenes anteriores al reconectar**.
 
 ---
 
-### 3. `DeviceNotFoundError` o `DeviceTypeError`
+### 3. `NoReadingError`: todavía no hay ninguna lectura disponible
 
-**Causa:** Se intenta acceder a un dispositivo no detectado o conectado en el puerto incorrecto.
+**Causa:** El firmware del sensor WeDo 2.0 opera por **notificación ante cambios** (_delta_): solo envía datos cuando el valor cambia.
+
+**Solución:**
+
+- Un periférico enchufado después de la conexión puede no haber informado su primera lectura todavía. Mueve el sensor con la mano o coloca un objeto frente al sensor de distancia para provocar la primera muestra.
+- Si el problema persiste, comprueba que el conector LPF2 esté firmemente encajado en el puerto.
+- Tras `with Hub()` o `wait_connection()`, los sensores ya conectados han informado su primera lectura y `read()` no falla por esta razón.
+
+---
+
+### 4. `PortError`: puerto vacío o con un periférico de otro tipo
+
+**Causa:** Se intentó usar un recurso sobre un puerto donde no hay periférico, o donde hay uno de otro tipo. Los mensajes identifican el recurso y el puerto, por ejemplo:
+
+```text
+puerto "a": no hay ningún periférico conectado (se esperaba "motor")
+puerto "a": hay un periférico "distance" y se esperaba "motor"
+```
 
 **Diagnóstico rápido:**
 Ejecuta este código para comprobar qué reconoce el hub:
 
 ```python
-from wedopy import Hub
+from wedo import Hub
 
 with Hub() as hub:
-    print("Puertos detectados:", hub.ports)
-    print("Actualizando reporte de puertos...")
-    print("Reporte actualizado:", hub.refresh_ports())
+    print("Puertos detectados:", hub.ports())
 ```
 
-- Si un puerto aparece vacío a pesar de tener un sensor conectado, desconecta el cable LPF2 y vuelve a conectarlo firmemente.
-- Si llamaste a `hub.motor("A")`, pero el motor está en el puerto B, ajusta el puerto a `"B"` o usa `hub.motor()` sin argumentos para autodetectarlo.
+- Si un puerto no aparece a pesar de tener un sensor conectado, desconecta el cable LPF2 y vuelve a conectarlo firmemente.
+- Si llamaste a `hub.motor("A")`, pero el motor está en el puerto B, ajusta el puerto a `"B"`.
 
 ---
 
-### 4. `AmbiguousDeviceError`
+### 5. `ValueError` en motores, colores o filtros
 
-**Causa:** Llamaste a `hub.motor()`, `hub.distance_sensor()` o `hub.tilt_sensor()` sin especificar el puerto, pero tienes **dos dispositivos del mismo tipo conectados simultáneamente** (por ejemplo, dos motores en los puertos A y B).
+**Causa:** La API valida todos los argumentos y no corrige en silencio. Los casos más comunes:
 
-**Solución:**
-Pasa el puerto explícitamente:
+- `motor.run(150)` → `motor (puerto "a"): el valor 150 está fuera del rango -100..100`.
+- `hub.led.color("green")` → `led: color "green" no válido (colores válidos: ...)`. Los nombres válidos son once: `off`, `pink`, `purple`, `blue`, `light_blue`, `light_green`, `dark_green`, `yellow`, `orange`, `red`, `white` (no existe el alias `"green"`).
+- `hub.button.has_change("pressd")` → `button: filtro "pressd" no admitido (admitidos: "pressed", "released")`.
 
-```python
-motor_a = hub.motor("A")
-motor_b = hub.motor("B")
-```
-
-O si deseas accionarlos juntos:
-
-```python
-motores = hub.motors(("A", "B"))
-```
+**Solución:** corrige el valor o consulta la referencia ([Motores](api/motores.html), [Periféricos](api/perifericos.html), [Sensores](api/sensores.html)).
 
 ---
 
-### 5. El motor continúa girando tras cancelar una tarea o presionar `Ctrl+C`
+### 6. El motor continúa girando tras cancelar una tarea
 
-**Causa:** La cancelación cooperativa de tareas (`hub.tasks.cancel()`) únicamente detiene el planificador lógico, pero no envía órdenes de parada de motores para permitir limpiezas personalizadas.
+**Causa:** Cancelar una tarea (`task.cancel()`) no detiene automáticamente los motores: la limpieza se escribe de forma explícita.
 
 **Solución:**
 
-1. Utiliza siempre el gestor de contexto `with Hub() as hub:`, el cual garantiza que al salir del bloque se detendrán todos los motores (`stop_all()`) y se cerrará la conexión BLE.
-2. Si controlas motores dentro de tareas cooperativas, utiliza la estructura `try ... finally`:
+1. Utiliza siempre el gestor de contexto `with Hub() as hub:`, que garantiza que al salir del bloque se detendrán todos los motores.
+2. Si controlas motores dentro de tareas, utiliza la estructura `try ... finally`:
    ```python
    def mover():
        motor = hub.motor("A")
        try:
            motor.run(80)
-           yield task.sleep(2)
+           hub.task.wait(2)
        finally:
-           motor.stop() # Se ejecuta incluso si la tarea es cancelada
+           motor.stop()  # Se ejecuta incluso si la tarea es cancelada
    ```
+3. Recuerda que durante la limpieza (`finally`) no puedes ceder el control (`hub.task.wait()` lanza de nuevo `TaskCancelled`); las operaciones directas como `motor.stop()` funcionan con normalidad.
 
 ---
 
 ## 🪟 Problemas específicos de Windows
 
-### 1. `HubConnectionError`: no se encuentra el hub en Windows
+### 1. La conexión falla en Windows
 
 **Causas y soluciones:**
 
@@ -120,65 +135,23 @@ motores = hub.motors(("A", "B"))
    Get-PnpDevice -Class Bluetooth
    ```
    Debe aparecer tu adaptador (por ejemplo, _Intel(R) Wireless Bluetooth_). Si no aparece o el Bluetooth está deshabilitado, actualiza los drivers del fabricante.
-2. **Falta de emparejamiento.** Algunos adaptadores Windows no exponen dispositivos BLE no emparejados a `bleak`. Abre _Configuración → Bluetooth y dispositivos → Agregar dispositivo_ y empareja el "LPF2 Smart Hub" antes de ejecutar `wedopy`.
+2. **Falta de emparejamiento.** Algunos adaptadores Windows no exponen dispositivos BLE no emparejados. Abre _Configuración → Bluetooth y dispositivos → Agregar dispositivo_ y empareja el "LPF2 Smart Hub" antes de ejecutar el programa.
 3. **Otro cliente BLE conectado.** El hub solo admite una conexión. Cierra la app oficial de LEGO, Scratch o cualquier otra aplicación que use el hub.
 4. **Adaptador incompatible o driver antiguo.** Los adaptadores Bluetooth 4.0 antiguos pueden no soportar GATT correctamente. Actualiza el driver del fabricante (Intel, Realtek, Broadcom…).
 
+En el navegador, además: Web Bluetooth requiere Chrome, Edge u otro navegador basado en Chromium, y la página debe servirse por HTTPS (o `localhost`).
+
 ---
 
-### 2. `OperationTimeout` intermitente en Windows
+### 2. La conexión es lenta o intermitente en Windows
 
-El backend WinRT de `bleak` puede introducir latencias mayores que BlueZ. Si los timeouts son frecuentes:
-
-- Ajusta los parámetros de `Timing` al construir el hub:
-  ```python
-  from wedopy import Hub
-  from wedopy_core.runtime.timing import Timing
-
-  timing = Timing(op_timeout=2.0, connect_timeout=30.0)
-  with Hub(timing=timing) as hub:
-      motor = hub.motor("A")
-      motor.run(80)
-  ```
 - Aleja el hub de fuentes de interferencia Wi-Fi (2.4 GHz) o USB 3.0.
-- Si el problema persiste, comprueba la distancia entre el adaptador y el hub (recomendado < 5 m sin obstáculos).
+- Comprueba la distancia entre el adaptador y el hub (recomendado < 5 m sin obstáculos).
+- Da más margen con `Hub(connect_timeout=30)`.
 
 ---
 
-### 3. Error al compilar `_wedopy.pyx` en Windows
-
-Si `pip install -e ".[dev]"` falla con errores de compilación:
-
-- Instala **Build Tools for Visual Studio** desde [visualstudio.microsoft.com/visual-cpp-build-tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/), seleccionando la carga de trabajo **"Desarrollo para el escritorio con C++"**.
-- Asegúrate de usar la versión de Python para la que tienes el compilador (Visual Studio 2019/2022 soporta Python 3.9–3.13).
-- Como alternativa, usa `uv sync` (descarga wheels precompilados cuando existen).
-- Si no necesitas la extensión compilada, `tests/conftest.py` ejecutará `_wedopy.pyx` como Python puro (con una advertencia). Esto es útil para desarrollo, pero **no recomendado para producción** por el rendimiento.
-
----
-
-### 4. PowerShell bloquea la activación del entorno virtual
-
-Error típico:
-
-```text
-File .\.venv\Scripts\Activate.ps1 cannot be loaded because running scripts is disabled on this system.
-```
-
-**Solución (una sola vez por usuario):**
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
-```
-
-Después, vuelve a intentar la activación:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
----
-
-### 5. `ModuleNotFoundError: No module named 'wedopy'` tras instalar en Windows
+### 3. `ModuleNotFoundError: No module named 'wedo'` tras instalar
 
 **Causa:** Es probable que estés ejecutando Python desde fuera del entorno virtual, o que la instalación haya fallado.
 
@@ -187,19 +160,19 @@ Después, vuelve a intentar la activación:
 1. Confirma que el entorno virtual está activado (el prompt debe mostrar `(.venv)` al inicio).
 2. Verifica la instalación:
    ```powershell
-   python -c "import wedopy; print(wedopy.__version__)"
+   python -c "import wedo; print(wedo.__version__)"
    ```
-3. Si el comando falla, revisa la salida de `pip install` para identificar el error de compilación (ver problema 3).
+3. Si el comando falla, revisa la salida de `pip install` para identificar el error.
 
 ---
 
 ## 🔍 Activación de Registros Detallados (Logging)
 
-`wedopy` utiliza el módulo estándar `logging` de Python. Para visualizar todas las tramas enviadas, respuestas recibidas y el latido del watchdog en tu terminal:
+`wedo` utiliza el módulo estándar `logging` de Python. Para visualizar el flujo del programa y los errores de tareas no capturadas:
 
 ```python
 import logging
-from wedopy import Hub
+from wedo import Hub
 
 # Activar registro en nivel DEBUG
 logging.basicConfig(
@@ -208,15 +181,14 @@ logging.basicConfig(
 )
 
 with Hub() as hub:
-    hub.led.index(3)
+    hub.led.color("blue")
     hub.motor("A").run(50)
 ```
 
 **Loggers disponibles:**
 
-- `wedopy`: Flujo de operaciones de alto nivel y conexión.
-- `wedopy.watchdog`: Eventos del supervisor de latidos y paradas de emergencia.
-- `wedopy.tasks`: Planificación, tiempos de espera y cancelación de tareas cooperativas.
+- `wedo`: Flujo de operaciones de alto nivel y conexión.
+- `wedo` (nivel `ERROR`): si una tarea falla con una excepción no capturada, el runtime informa del error con su traceback y no propaga la excepción a quien la creó.
 
 En **Windows**, si los logs no aparecen en la consola de PowerShell, asegúrate de que la codificación sea UTF-8:
 

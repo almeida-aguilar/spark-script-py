@@ -1,21 +1,28 @@
-// Tareas cooperativas (equivalente a src/wedopy/tasks.py y task.py).
+// Tareas cooperativas de la API v0.2.0: `hub.task`.
 //
-// En Python las tareas son generadores que ceden con `yield task.sleep(...)`. En JavaScript
-// son funciones (async) que reciben un contexto `ctx` y esperan con `await ctx.sleep(...)`:
+//   task = hub.task.spawn(fn)   # fn es cualquier invocable (función JS o Python)
+//   await hub.task.wait(1)      # suspende el flujo actual (cooperativo)
+//   task.cancel() / task.join()
 //
-//   hub.tasks.add(async (ctx) => { await led.on(); await ctx.sleep(0.3); await led.off(); });
-//   await hub.tasks.wait();
+// En el navegador cada tarea corre en su propia pila: las de Python se invocan con
+// `callPromising()` (JSPI), así que mientras una espera, las demás avanzan de verdad.
 //
-// Un solo hilo, cambio de tarea solo en los `await`. Las tareas canceladas reciben
-// TaskCancelled en su siguiente `ctx.sleep()` / `ctx.yieldNow()`, de modo que sus bloques
-// `finally` (p. ej. parar un motor) se ejecutan antes de que se cierre el hub.
-import { InvalidStateError } from "../core/errors.js";
-import { withTimeout } from "../core/util.js";
+// Cancelación segura. En Pyodide, RECHAZAR una promesa cuyo resultado espera `run_sync`
+// deja continuaciones de pila huérfanas (probadó con trazas: la pila se abandona y el
+// error reaparece después sin dueño). Por eso la cancelación NUNCA rechaza: se RESUELVE
+// la espera pendiente con un marcador ("ok" | "cancelled" | "stopped") y es el lado de
+// Python quien, al recuperar el control, lanza la excepción en su propia pila:
+//
+//   - `cancel(taskId)` -> la siguiente espera de esa tarea se resuelve con "cancelled"
+//     y Python lanza `TaskCancelled` (cooperativa y persistente: el pedido queda
+//     registrado aunque el marcador se pierda).
+//   - «Detener» (`interruptAll`) -> todas las esperas se resuelven ("stopped" el flujo
+//     principal, "cancelled" las tareas) y Python lanza KeyboardInterrupt / TaskCancelled.
+import { TaskCancelled } from "../core/errors.js";
 
-/** Se lanza dentro de una tarea cancelada. No es un error: el gestor la absorbe. */
-export class TaskCancelled extends Error {
-  constructor() { super("task cancelled"); this.name = "TaskCancelled"; }
-}
+export { TaskCancelled };
+
+const MARK = { ok: "ok", cancelled: "cancelled", stopped: "stopped" };
 
 function checkSeconds(seconds) {
   if (typeof seconds !== "number") throw new TypeError(`seconds must be a number, not ${typeof seconds}`);
@@ -25,183 +32,249 @@ function checkSeconds(seconds) {
   return seconds;
 }
 
-function abortableDelay(ms, signal) {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) { reject(new TaskCancelled()); return; }
-    const onAbort = () => { clearTimeout(timer); reject(new TaskCancelled()); };
-    const timer = setTimeout(() => { signal?.removeEventListener("abort", onAbort); resolve(); }, ms);
-    signal?.addEventListener("abort", onAbort, { once: true });
-  });
+/** Envoltorio público de una tarea para la API JavaScript. */
+export class Task {
+  constructor(manager, id) {
+    this._manager = manager;
+    this._id = id;
+  }
+
+  /** Identificador interno de la tarea. */
+  get id() { return this._id; }
+
+  /** "scheduled", "running", "finished" o "failed". */
+  get state() { return this._manager.state(this._id); }
+
+  /** Pide cancelar la tarea (cooperativa y persistente). */
+  cancel() { this._manager.cancel(this._id); }
+
+  /** Espera a que la tarea termine (no propaga su error). */
+  join() { return this._manager.join(this._id, undefined); }
+
+  toString() { return `Task(${this._id})`; }
 }
 
-/** Suspende la tarea actual al menos `seconds` mientras las demás siguen. */
-export function sleep(seconds, signal) {
-  checkSeconds(seconds);
-  return abortableDelay(seconds * 1000, signal);
-}
-
-/** Pasa la tarea actual al final de la cola sin pausarla. */
-export function yieldNow(signal) {
-  return abortableDelay(0, signal);
-}
-
-/** Instrucciones de planificación generales (no dependen de ningún hub). */
-export const task = Object.freeze({ sleep, yieldNow });
-
-class TaskContext {
-  constructor(signal, manager) { this.signal = signal; this._manager = manager; }
-  get cancelled() { return this.signal.aborted; }
-  /**
-   * Cancela todas las tareas desde dentro de una tarea, sin esperar (no bloquea). Las demás se
-   * cierran ya; la actual, en su siguiente `ctx.sleep()`. No uses `await tasks.cancel()` aquí:
-   * esperaría a la propia tarea.
-   */
-  cancelAll() { this._manager._cancelNow(); }
-  sleep(seconds) { return sleep(seconds, this.signal); }
-  yieldNow() { return yieldNow(this.signal); }
-}
-
-const nameOf = (fn) => fn.name || "anonymous";
-
+/**
+ * Planificador: vende suspensiones con marcadores y despacha por id.
+ * Una tarea es `{ id, callable, state, pending, cancelRequested, joiners, error }`.
+ */
 export class TaskManager {
-  /** @param {{onInterrupt?: () => Promise<void>|void, cancelTimeout?: number}} [opts] */
-  constructor({ onInterrupt = null, cancelTimeout = 2.0 } = {}) {
-    this._onInterrupt = onInterrupt;
-    this._cancelTimeout = cancelTimeout;
-    this._pending = []; // registradas, aún sin iniciar
-    this._running = new Set(); // tareas iniciadas y no terminadas
-    this._normal = 0; // tareas normales vivas (pendientes + en ejecución)
-    this._waiting = false;
-    this._failure = null;
-    this._wakeWait = null;
-    /** Errores secundarios del último wait(): [[nombre, error]] */
-    this.diagnostics = [];
+  constructor() {
+    this._tasks = new Map(); // id -> tarea
+    this._main = new Set(); // suspensiones del flujo principal
+    this._counter = 0;
+    this._allWaiters = [];
   }
 
-  /** Registra una tarea. Empieza a ejecutarse dentro de `wait()`. */
-  add(func, options = {}) {
-    if (typeof func !== "function") throw new TypeError(`a task must be a function, not ${typeof func}`);
-    if (options === null || typeof options !== "object") {
-      throw new TypeError("options must be an object such as { background: true }");
-    }
-    const { background = false } = options;
-    if (typeof background !== "boolean") throw new TypeError("background must be true or false");
-    const t = { func, name: nameOf(func), background, controller: new AbortController(), promise: null, finished: false };
-    if (!background) this._normal += 1;
-    if (this._waiting) this._launch(t); else this._pending.push(t);
+  _nextId() {
+    this._counter += 1;
+    return this._counter;
   }
 
-  /**
-   * Ejecuta las tareas hasta que terminen todas las normales; después cancela las de fondo.
-   * Si una tarea falla, cancela el resto, ejecuta sus `finally` y relanza el error original.
-   * `signal` (AbortSignal) hace de "Ctrl+C": cancela, llama a `onInterrupt` y relanza.
-   */
-  async wait({ signal } = {}) {
-    if (this._waiting) throw new InvalidStateError("wait() cannot be called from a task or during another wait()");
-    this._waiting = true;
-    this.diagnostics = [];
-    // La interrupción se registra de inmediato y wait() no vuelve hasta que termine el
-    // trabajo de cancelación y `onInterrupt` (p. ej. parar los motores).
-    const onAbort = () => {
-      this._interruptedBy = signal.reason ?? new DOMException("aborted", "AbortError");
-      this._interruptWork = (async () => {
-        await this.cancel();
-        try { await this._onInterrupt?.(); } catch { /* mejor esfuerzo */ }
-      })();
+  /** Crea y arranca una tarea con el id dado; el invocable puede ser JS o Python. */
+  spawn(id, callable) {
+    const task = {
+      id, callable, state: "running", pending: null,
+      cancelRequested: false, joiners: [], error: null, result: null,
     };
-    this._interruptedBy = null;
-    this._interruptWork = null;
-    signal?.addEventListener("abort", onAbort, { once: true });
+    this._tasks.set(id, task);
+    this._start(task);
+    return id;
+  }
+
+  _start(task) {
+    let promise;
     try {
-      const pending = this._pending;
-      this._pending = [];
-      for (const t of pending) {
-        if (this._failure !== null) this._finish(t); // un fallo cancela el resto: no se inician
-        else this._launch(t);
-      }
-      if (this._normal > 0 && this._failure === null && !this._interruptedBy) {
-        await new Promise((resolve) => { this._wakeWait = resolve; });
-        this._wakeWait = null;
-      }
-      if (this._failure === null && !this._interruptedBy) {
-        for (const t of this._running) if (t.background) t.controller.abort();
-      } else {
-        this._abortAll();
-      }
-      await this._settle();
-      if (this._interruptWork) await this._interruptWork;
-    } finally {
-      signal?.removeEventListener("abort", onAbort);
-      this._waiting = false;
+      // Las tintas de Python entran con su propia pila (callPromising); las de JS, a síncrono.
+      promise = typeof task.callable?.callPromising === "function"
+        ? task.callable.callPromising()
+        : Promise.resolve().then(() => task.callable());
+    } catch (exc) {
+      this._finish(task, "failed", exc);
+      return;
     }
-    const interrupted = this._interruptedBy;
-    this._interruptedBy = null;
-    const failure = this._failure;
-    this._failure = null;
-    if (interrupted) throw interrupted;
-    if (failure) throw failure;
+    promise = promise.then(
+      (value) => { task.result = value; this._finish(task, "finished", null); },
+      (error) => { this._finish(task, "failed", error); },
+    );
+    task.promise = promise;
+    promise.catch(() => {}); // el error se guarda en la tarea; la promesa no queda suelta
+  }
+
+  _finish(task, state, error) {
+    task.state = state;
+    task.error = error ?? null;
+    if (task.pending) { const p = task.pending; task.pending = null; p.settle(MARK.ok); }
+    const joiners = task.joiners;
+    task.joiners = [];
+    for (const j of joiners) j.handle.settle(MARK.ok);
+    if (this._live() === 0) {
+      const waiters = this._allWaiters;
+      this._allWaiters = [];
+      for (const w of waiters) w();
+    }
+  }
+
+  _live() {
+    let n = 0;
+    for (const t of this._tasks.values()) if (t.state === "running") n += 1;
+    return n;
   }
 
   /**
-   * Cierra todas las tareas (normales y de fondo) y espera (con tope) a que terminen sus
-   * `finally`. No para los motores. Desde fuera de las tareas. Dentro de una tarea usa
-   * `ctx.cancelAll()`, porque `await cancel()` esperaría a la propia tarea.
+   * Punto de suspensión. `id` es `undefined`/`null` para el flujo principal. Resuelve con
+   * el marcador; quien llama (Python o JS) reacciona a "cancelled"/"stopped".
    */
-  async cancel() {
-    this._cancelNow();
-    await this._settle();
+  wait(id, seconds) {
+    checkSeconds(seconds);
+    const deadline = setTimeout(() => handle.settle(MARK.ok), seconds * 1000);
+    const task = id == null ? null : this._tasks.get(id);
+    let settle;
+    const promise = new Promise((r) => { settle = r; });
+    const handle = {
+      settled: false,
+      settle: (marker) => {
+        if (handle.settled) return;
+        handle.settled = true;
+        clearTimeout(deadline);
+        if (task && task.pending === handle) task.pending = null;
+        if (task == null && this._main.has(handle)) this._main.delete(handle);
+        settle(marker);
+      },
+    };
+    if (task) task.pending = handle;
+    else this._main.add(handle);
+    return promise;
   }
 
-  // -- internos ---------------------------------------------------------------------
-
-  _abortAll() {
-    for (const t of this._running) t.controller.abort();
+  /** Espera a que termine una tarea; `joinerId` permite cancelar a quien espera. */
+  join(id, joinerId = undefined) {
+    const task = this._tasks.get(id);
+    if (!task) return Promise.resolve();
+    if (task.state === "finished" || task.state === "failed") return Promise.resolve();
+    const joiner = joinerId == null ? null : this._tasks.get(joinerId);
+    return new Promise((resolve, reject) => {
+      if (joiner) {
+        const handle = {
+          settle: (marker) => {
+            const i = task.joiners.indexOf(waiter);
+            if (i >= 0) task.joiners.splice(i, 1);
+            if (joiner.pending === handle) joiner.pending = null;
+            if (marker === MARK.cancelled) reject(new TaskCancelled());
+            else resolve();
+          },
+        };
+        var waiter = {};
+        waiter.handle = handle;
+        task.joiners.push(waiter);
+        joiner.pending = handle;
+      } else {
+        const handle = {
+          settle: () => {
+            const i = task.joiners.indexOf(waiter);
+            if (i >= 0) task.joiners.splice(i, 1);
+            resolve();
+          },
+        };
+        var waiter = { handle };
+        task.joiners.push(waiter);
+      }
+    });
   }
 
-  _cancelNow() {
-    for (const t of this._pending) this._finish(t);
-    this._pending = [];
-    this._abortAll();
+  /** ¿Se pidió cancelar esta tarea? (la cancelación es persistente). */
+  cancelRequested(id) {
+    const task = this._tasks.get(id);
+    return Boolean(task?.cancelRequested);
   }
 
-  async _settle() {
-    if (this._running.size === 0) return;
-    const all = Promise.allSettled([...this._running].map((t) => t.promise));
-    await withTimeout(all, this._cancelTimeout, () => null).catch(() => {});
-  }
-
-  _launch(t) {
-    const ctx = new TaskContext(t.controller.signal, this);
-    this._running.add(t);
-    t.promise = this._run(t, ctx);
-  }
-
-  async _run(t, ctx) {
-    try {
-      await t.func(ctx);
-    } catch (exc) {
-      if (!(exc instanceof TaskCancelled)) this._fail(t, exc);
-    } finally {
-      this._running.delete(t);
-      this._finish(t);
+  /** Pide cancelar una tarea: su siguiente espera se resuelve con "cancelled". */
+  cancel(id) {
+    const task = this._tasks.get(id);
+    if (!task || task.state !== "running") return;
+    task.cancelRequested = true;
+    if (task.pending) {
+      const p = task.pending;
+      task.pending = null;
+      p.settle(MARK.cancelled);
     }
   }
 
-  _finish(t) {
-    if (t.finished) return;
-    t.finished = true;
-    if (!t.background) this._normal -= 1;
-    if (this._normal <= 0 || this._failure !== null) this._wakeWait?.();
+  /** Cancela todas las tareas y despierta al flujo principal ("Detener"). */
+  interruptAll() {
+    for (const task of [...this._tasks.values()]) {
+      task.cancelRequested = true;
+      if (task.pending) {
+        const p = task.pending;
+        task.pending = null;
+        p.settle(MARK.cancelled);
+      }
+    }
+    for (const handle of [...this._main]) handle.settle(MARK.stopped);
   }
 
-  _fail(t, exc) {
-    if (this._failure === null && !t.controller.signal.aborted) {
-      this._failure = exc;
-      try { exc.taskName = t.name; } catch { /* error no extensible */ }
-      this._abortAll();
-      this._wakeWait?.();
-    } else {
-      this.diagnostics.push([t.name, exc]);
-    }
+  cancelAll() { this.interruptAll(); }
+
+  /** Promesa que se resuelve cuando no queda ninguna tarea viva. */
+  allSettled() {
+    if (this._live() === 0) return Promise.resolve();
+    return new Promise((resolve) => { this._allWaiters.push(resolve); });
+  }
+
+  /** Estado de una tarea ("scheduled" nunca aparece: spawn arranca de inmediato). */
+  state(id) {
+    const task = this._tasks.get(id);
+    return task ? task.state : null;
   }
 }
+
+/**
+ * El objeto `hub.task`: la cara pública de JavaScript (`spawn(fn)`, `await wait(s)`).
+ * También sirve de puente para Python, que llama con las firmas internas
+ * `spawn(id, callable)`, `wait(id, seconds)`, `join(id, joinerId)`, `cancel(id)`,
+ * `cancelAll`, `allSettled` (despachamos por el tipo del primer argumento).
+ */
+export class TaskProtocol {
+  constructor(manager) { this._manager = manager; }
+
+  spawn(fnOrId, maybeFn = undefined) {
+    if (typeof fnOrId === "function") {
+      const id = this._manager._nextId();
+      // Contexto propio de la tarea: sus esperas regresan con el id, de modo que
+      // cancel() (o «Detener») puede abortarlas aunque la función no complete.
+      const ctx = {
+        id,
+        wait: async (seconds) => {
+          // La cancelación es persistente: si se pidió antes, todo punto cooperativo falla.
+          if (this._manager.cancelRequested(id)) throw new TaskCancelled();
+          const marker = await this._manager.wait(id, checkSeconds(seconds));
+          if (marker === MARK.cancelled) throw new TaskCancelled();
+          if (marker === MARK.stopped) throw new TaskCancelled("program stopped");
+          if (this._manager.cancelRequested(id)) throw new TaskCancelled();
+          return marker === MARK.ok ? undefined : marker;
+        },
+      };
+      this._manager.spawn(id, () => Promise.resolve().then(() => fnOrId(ctx)));
+      return new Task(this._manager, id);
+    }
+    // Ruta del puente Python: el paquete ya trae su propio Task (excepciones en BaseException).
+    return this._manager.spawn(fnOrId, maybeFn);
+  }
+
+  /** Flujo principal: devuelve el marcador ("ok"/"stopped"). Cancelable si hay tarea. */
+  async wait(idOrSeconds, maybeSeconds = undefined) {
+    if (maybeSeconds !== undefined) {
+      return this._manager.wait(idOrSeconds, checkSeconds(maybeSeconds)).then((m) => (m === MARK.ok ? undefined : m));
+    }
+    return this._manager.wait(null, checkSeconds(idOrSeconds)).then((m) => (m === MARK.ok ? undefined : m));
+  }
+
+  join(id, joinerId = undefined) { return this._manager.join(id, joinerId); }
+  cancel(id) { this._manager.cancel(id); }
+  cancelAll() { this._manager.cancelAll(); }
+  interruptAll() { return this._manager.interruptAll(); }
+  allSettled() { return this._manager.allSettled(); }
+  state(id) { return this._manager.state(id); }
+}
+
+export { MARK };

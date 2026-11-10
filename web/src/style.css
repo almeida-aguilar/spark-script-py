@@ -175,6 +175,19 @@ button.icon { min-width: 2.4rem; padding: .2rem .35rem; font-size: 1.05rem; line
   .wb-center button { width: 100%; min-height: 2.6rem; padding: .3rem .4rem; font-size: .88rem; }
 }
 
+/* -- diálogos ---------------------------------------------------------------------- */
+.dlg {
+  border: 1px solid var(--line); border-radius: .7rem; padding: 0; color: var(--fg);
+  background: var(--panel); box-shadow: 0 1.5rem 3rem var(--shadow);
+  max-width: min(24rem, 92vw);
+}
+.dlg::backdrop { background: rgb(0 0 0 / .55); }
+.dlg form { display: flex; flex-direction: column; gap: .55rem; padding: 1rem; }
+.dlg h2 { font-size: 1.05rem; }
+.dlg input { width: 100%; }
+.dlg .hint { margin: 0; }
+.dlg-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .35rem; }
+
 /* -- banners ---------------------------------------------------------------------- */
 .banner {
   margin: .6rem 1rem 0; padding: .55rem .8rem; border-radius: .5rem; flex: none;

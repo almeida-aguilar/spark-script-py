@@ -1,115 +1,129 @@
 import { afterEach, describe, expect, it } from "vitest";
 import * as K from "../src/core/constants.js";
-import { BLEError, DeviceNotFoundError, OperationTimeout } from "../src/core/errors.js";
+import { BLEError, NoReadingError, PortError } from "../src/core/errors.js";
 import { inputFormat } from "../src/core/protocol.js";
 import { makeHub, sleep } from "./helpers.js";
 
 let hub, sim;
 afterEach(async () => { await hub?.disconnect(); hub = sim = undefined; });
-const setup = async (devices, opts) => { ({ hub, sim } = makeHub(devices, opts)); await hub.connect(); };
+const setup = async (devices, opts) => { ({ hub, sim } = makeHub(devices, opts)); hub.connect(); await hub.waitConnection(5); };
 
 describe("DistanceSensor", () => {
-  it("lee 0..10, redondea half-to-even y acota", async () => {
+  it("lee 0..10 como centímetros enteros", async () => {
     await setup({ A: "distance" });
-    const d = hub.distanceSensor();
+    const d = hub.distance("A");
     sim.setDistance(7); expect(await d.read()).toBe(7);
-    sim.setDistance(2.5); await sleep(0.01); expect(await d.read()).toBe(2);
+    sim.setDistance(2.5); await sleep(0.01); expect(await d.read()).toBe(3);
     sim.setDistance(99); await sleep(0.01); expect(await d.read()).toBe(10);
     sim.setDistance(-3); await sleep(0.01); expect(await d.read()).toBe(0);
   });
 
-  it("isNear / isFar son estrictos y validan el umbral", async () => {
+  it("detecta los cambios y los consume una sola vez", async () => {
     await setup({ A: "distance" });
-    const d = hub.distanceSensor("A");
-    sim.setDistance(5); expect(await d.read()).toBe(5);
-    expect(await d.isNear(5)).toBe(false);
-    expect(await d.isNear(6)).toBe(true);
-    expect(await d.isFar(5)).toBe(false);
-    expect(await d.isFar(4)).toBe(true);
-    await expect(d.isNear(11)).rejects.toBeInstanceOf(RangeError);
-    await expect(d.isNear("3")).rejects.toBeInstanceOf(TypeError);
+    const d = hub.distance("A");
+    sim.setDistance(4);
+    await d.read();                    // el primer valor es el estado de partida
+    expect(d.hasChange()).toBe(false);
+    sim.setDistance(7); await sleep(0.05);
+    expect(d.hasChange("increase")).toBe(true);
+    expect(d.hasChange("increase")).toBe(false); // consumido
+    sim.setDistance(2); await sleep(0.05);
+    expect(d.hasChange("decrease")).toBe(true);
+    expect(d.hasChange("increase")).toBe(false);
+  });
+
+  it("un filtro no admitido es un error", async () => {
+    await setup({ A: "distance" });
+    expect(() => hub.distance("A").hasChange("increasex")).toThrow(RangeError);
+  });
+
+  it("espera un cambio y devuelve su tipo", async () => {
+    await setup({ A: "distance" });
+    const d = hub.distance("A");
+    sim.setDistance(2);
+    await d.read();
+    const pending = d.waitChange("increase");
+    await sleep(0.05);
+    sim.setDistance(8);
+    await expect(pending).resolves.toBe("increase");
   });
 
   it("solo notifica cambios: sin cambios devuelve el valor en caché", async () => {
     await setup({ A: "distance" });
-    const d = hub.distanceSensor();
+    const d = hub.distance("A");
     sim.setDistance(4);
     expect(await d.read()).toBe(4);
     const writes = sim.writes.length;
-    expect(await d.read()).toBe(4); // sin reconfigurar ni escribir
+    expect(await d.read()).toBe(4);
     expect(sim.writes.length).toBe(writes);
   });
 
-  it("agota el tiempo si el hub no emite valores", async () => {
+  it("sin lectura todavía, lanza NoReadingError", async () => {
     await setup({ A: "distance" }, { silentSensors: true });
-    await expect(hub.distanceSensor().read()).rejects.toBeInstanceOf(OperationTimeout);
+    await expect(hub.distance("A").read()).rejects.toBeInstanceOf(NoReadingError);
   });
 
   it("falla si el dispositivo se retira mientras se lee", async () => {
     await setup({ A: "distance" }, { silentSensors: true });
-    const pending = hub.distanceSensor().read();
+    const pending = hub.distance("A").read();
     pending.catch(() => {});
     await sleep(0.05);
     sim.detach("A");
-    await expect(pending).rejects.toBeInstanceOf(DeviceNotFoundError);
+    await expect(pending).rejects.toBeInstanceOf(PortError);
   });
 });
 
 describe("valores inválidos", () => {
   it("un escalar de longitud inesperada se informa como BLEError", async () => {
     await setup({ A: "distance" });
-    const d = hub.distanceSensor();
+    const d = hub.distance("A");
     sim.setDistance(1);
     await d.read();
-    hub._session.core._samples.set(1, Uint8Array.of(1, 2, 3)); // 3 bytes: no decodificable
-    await expect(d.read()).rejects.toBeInstanceOf(BLEError);
-  });
-
-  it("un float no finito se informa como BLEError", async () => {
-    await setup({ A: "distance" });
-    const d = hub.distanceSensor();
-    sim.setDistance(1);
-    await d.read();
-    hub._session.core._samples.set(1, new Uint8Array(new Float32Array([Infinity]).buffer));
+    hub._session.core._samples.set(1, Uint8Array.of(1, 2, 3));
     await expect(d.read()).rejects.toBeInstanceOf(BLEError);
   });
 });
 
 describe("TiltSensor", () => {
-  it("lee las 5 direcciones", async () => {
+  it("lee la dirección con los nombres de la API", async () => {
     await setup({ B: "tilt" });
-    const t = hub.tiltSensor();
-    for (const dir of ["neutral", "back", "right", "left", "forward"]) {
+    const t = hub.tilt("B");
+    for (const dir of ["none", "backward", "left", "right", "forward"]) {
       sim.setTiltDirection(dir);
       await sleep(0.01);
-      expect(await t.readDirection()).toBe(dir);
+      expect(await t.read()).toBe(dir);
     }
   });
 
-  it("lee el ángulo como par int8 y configura UNIT_RAW", async () => {
+  it("lee los ejes como enteros y configura UNIT_RAW", async () => {
     await setup({ B: "tilt" });
-    const t = hub.tiltSensor();
+    const t = hub.tilt("B");
     sim.setTiltAngle(-5, 10);
-    expect(await t.readAngle()).toEqual([-5, 10]);
+    expect(await t.x.read()).toBe(-5);
+    expect(await t.y.read()).toBe(10);
     const cfg = sim.writes.map(([, d]) => d).find((d) => d[0] === 1 && d[1] === 2 && d[2] === 2);
     expect(cfg[9]).toBe(0); // UNIT_RAW
   });
 
-  it("cambiar de modo reconfigura el sensor", async () => {
+  it("los ejes son recursos independientes", async () => {
     await setup({ B: "tilt" });
-    const t = hub.tiltSensor();
-    sim.setTiltAngle(3, 4); expect(await t.readAngle()).toEqual([3, 4]);
-    sim.setTiltDirection("left"); await sleep(0.01);
-    expect(await t.readDirection()).toBe("left");
+    const t = hub.tilt("B");
+    sim.setTiltAngle(1, 1);
+    await t.x.read();
+    await t.y.read();
+    sim.setTiltAngle(5, 5); await sleep(0.05);
+    expect(t.x.hasChange("increase")).toBe(true);
+    expect(t.y.hasChange("increase")).toBe(true);
   });
 
-  it("filtra por longitud esperada: un valor de otra longitud agota el tiempo", async () => {
+  it("detecta el cambio de dirección", async () => {
     await setup({ B: "tilt" });
-    const t = hub.tiltSensor();
-    sim.setTiltAngle(1, 1);
-    await t.readAngle();
-    hub._session.core._samples.set(2, Uint8Array.of(1, 2, 3, 4, 5, 6, 7, 8, 9));
-    await expect(t.readAngle()).rejects.toBeInstanceOf(OperationTimeout);
+    const t = hub.tilt("B");
+    sim.setTiltDirection("none");
+    await t.read();
+    sim.setTiltDirection("left"); await sleep(0.05);
+    expect(t.hasChange("left")).toBe(true);
+    expect(t.hasChange("right")).toBe(false);
   });
 
   it("otro lector del mismo sensor no invalida la lectura (modo dirección vs. ángulo)", async () => {
@@ -117,10 +131,10 @@ describe("TiltSensor", () => {
     // admite un formato a la vez, así que la lectura debe re-afirmar el suyo en vez de
     // fallar con "the device on connect id N changed".
     await setup({ B: "tilt" }, { silentSensors: true });
-    const t = hub.tiltSensor();
+    const t = hub.tilt("B");
     const core = hub._session.core;
     sim.setTiltAngle(-13, -26);
-    const pending = t.readAngle();      // en espera: el simulador no emite nada
+    const pending = t.x.read();
     pending.catch(() => {});
     await sleep(0.05);
     // Otro lector (el panel) deja el sensor configurado en modo dirección.
@@ -128,7 +142,7 @@ describe("TiltSensor", () => {
     core._modes.set(2, `${K.TYPE_TILT}/${K.TILT_DIRECTION}`);
     await sleep(0.05);
     sim.silentSensors = false;
-    sim.setTiltDirection("neutral");    // llega un valor de dirección y despierta la lectura
-    await expect(pending).resolves.toEqual([-13, -26]);
+    sim.setTiltDirection("neutral");
+    await expect(pending).resolves.toBe(-13);
   });
 });

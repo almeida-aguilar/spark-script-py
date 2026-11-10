@@ -3,7 +3,7 @@
 import * as K from "./constants.js";
 import { pyRound } from "./util.js";
 
-export const TILT_DIRECTIONS = Object.freeze({ 0: "neutral", 3: "back", 5: "right", 7: "left", 9: "forward" });
+export const TILT_DIRECTIONS = Object.freeze({ 0: "none", 3: "backward", 5: "right", 7: "left", 9: "forward" });
 
 // -- Comandos -----------------------------------------------------------------
 

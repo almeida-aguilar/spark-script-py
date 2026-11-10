@@ -1,9 +1,10 @@
-"""Print the tilt angle and direction."""
+"""Print the tilt direction and both axes."""
 import time
-from wedopy import Hub
+
+from wedo import Hub
 
 with Hub() as hub:
-    tilt = hub.tilt_sensor("A")
+    tilt = hub.tilt("A")
     for _ in range(20):
-        print("angle", tilt.read_angle(), "| direction", tilt.read_direction())
-        time.sleep(0.25)
+        print("direction", tilt.read(), "| x", tilt.x.read(), "| y", tilt.y.read())
+        hub.task.wait(0.25)

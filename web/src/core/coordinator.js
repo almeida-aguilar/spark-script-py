@@ -196,7 +196,7 @@ export class Coordinator extends Emitter {
       } else if (uuid === K.CHAR_SENSOR) {
         const s = parseSample(data);
         this._samples.set(s.conn, s.value);
-        this.emit("sample", { conn: s.conn, value: s.value });
+        this.emit("sample", { conn: s.conn, value: s.value, mode: this._sampleMode(s.conn) });
         this._changed.notify();
       } else if (uuid === K.CHAR_BUTTON) {
         if (data.length > 0) {
@@ -209,6 +209,14 @@ export class Coordinator extends Emitter {
     } catch (exc) {
       this._log("debug", `bad notification on ${uuid}: ${hexString(data)} (${exc?.message})`);
     }
+  }
+
+  /** Modo configurado en una conexión ("tipo/modo"), para interpretar las muestras. */
+  _sampleMode(conn) {
+    const key = this._modes.get(conn);
+    if (!key) return null;
+    const idx = key.lastIndexOf("/");
+    return idx >= 0 ? Number(key.slice(idx + 1)) : null;
   }
 
   _handlePort(data) {

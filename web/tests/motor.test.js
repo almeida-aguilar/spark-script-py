@@ -1,18 +1,16 @@
 import { afterEach, describe, expect, it } from "vitest";
 import * as K from "../src/core/constants.js";
-import {
-  AmbiguousDeviceError, DeviceNotFoundError, DeviceTypeError, InvalidStateError,
-} from "../src/core/errors.js";
+import { NotConnectedError, PortError } from "../src/core/errors.js";
 import { makeHub } from "./helpers.js";
 
 let hub, sim;
 afterEach(async () => { await hub?.disconnect(); hub = sim = undefined; });
-const setup = async (devices, opts) => { ({ hub, sim } = makeHub(devices, opts)); await hub.connect(); };
+const setup = async (devices, opts) => { ({ hub, sim } = makeHub(devices, opts)); hub.connect(); await hub.waitConnection(5); };
 
 describe("Motor", () => {
-  it("reconoce los dispositivos de los puertos A y B", async () => {
+  it("reconoce los dispositivos de los puertos A y B (nombres en minúsculas)", async () => {
     await setup({ A: "motor", B: "distance" });
-    expect(hub.ports).toEqual({ A: "motor", B: "distance" });
+    expect(hub.ports()).toEqual({ a: "motor", b: "distance" });
   });
 
   it("envía [conn,01,01,int8] para velocidades -100..100", async () => {
@@ -32,42 +30,33 @@ describe("Motor", () => {
     const a = hub.motor("A");
     expect(() => a.run(101)).toThrow(RangeError);
     expect(() => a.run(-101)).toThrow(RangeError);
-    expect(() => a.run(1.5)).toThrow(TypeError);
     expect(() => a.run("50")).toThrow(TypeError);
-    expect(() => a.run(NaN)).toThrow(TypeError);
+    expect(() => a.run(NaN)).toThrow(RangeError); // no finito: ValueError en Python
+    expect(() => a.run(Infinity)).toThrow(RangeError);
+    // Redondeo al entero más cercano (resolución del dispositivo)
+    await a.run(50.4); expect(sim.motors[1]).toBe(50);
+    await a.run(-50.6); expect(sim.motors[1]).toBe(-51);
   });
 
-  it("selecciona motor por puerto o automáticamente", async () => {
+  it("el selector solo valida el nombre del puerto (no exige conexión)", async () => {
     await setup({ A: "motor", B: "distance" });
-    expect(hub.motor().port).toBe("A");
-    expect(hub.motor("a").port).toBe("A");
-    expect(() => hub.motor("B")).toThrow(DeviceTypeError);
+    expect(hub.motor("a").port).toBe("a");
+    expect(hub.motor("A").port).toBe("a");
     expect(() => hub.motor("C")).toThrow(RangeError);
     expect(() => hub.motor(3)).toThrow(TypeError);
   });
 
-  it("informa de dispositivo ausente y de ambigüedad", async () => {
+  it("el error de puerto vacío o equivocado aparece al usar el recurso", async () => {
     await setup({ A: "motor" });
-    expect(() => hub.motor("B")).toThrow(DeviceNotFoundError);
-    expect(() => hub.tiltSensor()).toThrow(DeviceNotFoundError);
-    await hub.disconnect();
-    ({ hub, sim } = makeHub({ A: "motor", B: "motor" }));
-    await hub.connect();
-    expect(() => hub.motor()).toThrow(AmbiguousDeviceError);
+    expect(() => hub.motor("B").run(50)).toThrow(PortError);
+    await expect(hub.distance("A").read()).rejects.toBeInstanceOf(PortError);
+    await expect(hub.tilt("A").read()).rejects.toBeInstanceOf(PortError);
   });
 
-  it("MotorGroup acciona A y luego B, y valida sus argumentos", async () => {
-    await setup({ A: "motor", B: "motor" });
-    const group = hub.motors(["B", "A"]);
-    await group.run(30);
-    const order = sim.writesTo(K.CHAR_OUTPUT_CMD).map((d) => d[0]);
-    expect(order).toEqual([1, 2]);
-    expect(String(group)).toBe("MotorGroup('A', 'B')");
-    await group.stop();
-    expect([sim.motors[1], sim.motors[2]]).toEqual([0, 0]);
-    expect(() => hub.motors("AB")).toThrow(TypeError);
-    expect(() => hub.motors([])).toThrow(RangeError);
-    expect(() => hub.motors(["A", "A"])).toThrow(RangeError);
+  it("sin conexión, usar un motor lanza NotConnectedError", async () => {
+    ({ hub, sim } = makeHub());
+    const motor = hub.motor("A"); // el selector no exige conexión
+    expect(() => motor.run(50)).toThrow(NotConnectedError);
   });
 
   it("disconnect para los motores activos", async () => {
@@ -75,10 +64,5 @@ describe("Motor", () => {
     await hub.motor("A").run(70);
     expect(await hub.disconnect()).toBe(true);
     expect(sim.motors[1]).toBe(0);
-  });
-
-  it("no se puede operar sin conexión", async () => {
-    ({ hub, sim } = makeHub());
-    expect(() => hub.motor("A")).toThrow(InvalidStateError);
   });
 });

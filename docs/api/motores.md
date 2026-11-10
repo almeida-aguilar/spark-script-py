@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "API: Motores"
-description: Referencia de las clases Motor y MotorGroup en wedopy
+description: Referencia de la clase Motor en el paquete wedo (v0.2.0)
 prev:
   title: Hub
   url: /api/hub.html
@@ -10,76 +10,96 @@ next:
   url: /api/sensores.html
 ---
 
-# Motores (`Motor` y `MotorGroup`)
+# Motores (`Motor`)
 
-El módulo de motores permite accionar y regular la velocidad y dirección de los motores LEGO Power Functions conectados a los puertos del Smart Hub.
+Los motores se seleccionan por puerto:
 
 ```python
-from wedopy import Motor, MotorGroup
+motor_a = hub.motor("A")
+motor_b = hub.motor("B")
 ```
+
+Los nombres de puerto se escriben con `A` o `B`, aunque no se distinguen mayúsculas de minúsculas.
 
 ---
 
 ## Clase `Motor`
 
-Representa un motor individual conectado al puerto `"A"` o `"B"`. Se obtiene a través de `hub.motor()`.
+Representa un motor individual conectado al puerto `"a"` o `"b"`. Se obtiene a través de `hub.motor(port)`.
 
 ### Atributos
 
-- **`port`** *(str)*: Nombre del puerto al que está conectado (`"A"` o `"B"`).
+- **`port`** *(str)*: Nombre del puerto al que está conectado (`"a"` o `"b"`).
 
 ### Métodos
 
-#### `run(speed)`
+#### `run(value)`
 ```python
-motor.run(speed: int) -> None
+motor.run(value: float) -> None
 ```
-Establece la potencia y sentido de giro del motor.
+Establece la velocidad lógica del motor con un valor firmado entre `-100` y `100`:
 
-- **Parámetros:**
-  - `speed` *(int)*: Entero en el rango de `-100` a `100`.
-    - Valores positivos (`1` a `100`): Giro en sentido horario / avance.
-    - Valores negativos (`-1` a `-100`): Giro en sentido antihorario / retroceso.
-    - `0`: Detiene el motor (equivalente a `stop()`).
-- **Excepciones:**
-  - `TypeError`: Si `speed` no es un número entero.
-  - `ValueError`: Si `speed` está fuera del rango `[-100, 100]`.
+| Valor | Comportamiento |
+|--:|---|
+| `100` | Velocidad máxima en un sentido |
+| `50` | Velocidad parcial en ese sentido |
+| `0` | Detener el motor |
+| `-50` | Velocidad parcial en el sentido contrario |
+| `-100` | Velocidad máxima en el sentido contrario |
+
+El signo determina el sentido de giro y el valor absoluto determina la intensidad.
+
+Reglas del argumento:
+
+- Debe ser un `int` o un `float` finito entre `-100` y `100`, ambos incluidos.
+- Un valor fuera de ese rango, `NaN` o infinito lanza `ValueError`. La API no recorta el valor en silencio.
+- Un valor que no sea numérico (incluidos los `bool`) lanza `TypeError`.
+- Si el dispositivo solo admite valores enteros, un valor con parte decimal se redondea al entero más cercano.
 
 ```python
 # Girar a máxima potencia hacia adelante
 motor.run(100)
 
-# Marcha lenta en retroceso
+# Marcha parcial en retroceso
 motor.run(-30)
 ```
+
+> [!NOTE]
+> El motor sigue girando con ese valor hasta que se le da otra orden o se aplica alguna de las paradas de seguridad de la sección [Hub](hub.html): fin del bloque `with` o `hub.disconnect()`.
 
 #### `stop()`
 ```python
 motor.stop() -> None
 ```
-Detiene el motor enviando la orden de potencia `0`.
-
-> **Nota técnica sobre parada:** El Smart Hub implementa el perfil de parada `nobarrier` (*coast*), donde la corriente del motor se corta y el rotor desacelera libremente. El acuse de recibo (ACK) de BLE confirma que la orden fue procesada por el microcontrolador, no que el eje haya dejado de rotar físicamente.
+Pide parar el motor. Es un alias de `run(0)`: no introduce una operación distinta.
 
 ---
 
-## Clase `MotorGroup`
+## 🔀 Independencia de los motores
 
-Permite controlar varios motores de manera simultánea y coordinada con un orden determinista (puerto A primero, luego puerto B). Se obtiene a través de `hub.motors(("A", "B"))`.
+Cada motor se controla de manera independiente. Ejecutar una operación sobre un motor no modifica el estado del otro.
 
-### Métodos
-
-#### `run(speed)`
 ```python
-group.run(speed: int) -> None
-```
-Aplica la misma velocidad a todos los motores del grupo en orden determinista.
+motor_a.run(100)
+motor_b.run(-100)
 
-#### `stop()`
-```python
-group.stop() -> None
+motor_a.stop()  # motor_b continúa funcionando
 ```
-Detiene todos los motores del grupo. Si la parada de uno de los motores falla, `MotorGroup` intenta detener los motores restantes antes de propagar la excepción original.
+
+No se define un grupo de motores. Si se desea actuar sobre ambos, se realizan dos llamadas explícitas:
+
+```python
+motor_a.stop()
+motor_b.stop()
+```
+
+Esto evita añadir una abstracción de uso limitado y mantiene claro qué periférico recibe cada orden.
+
+---
+
+## ⚠️ Varias tareas sobre un mismo motor
+
+Si dos tareas (o una tarea y el flujo principal) envían órdenes al mismo motor, **prevalece la última orden recibida**. La API no coordina ese acceso: es responsabilidad del programa evitar que varias actividades controlen el mismo motor a la vez.
 
 ---
 
@@ -88,14 +108,13 @@ Detiene todos los motores del grupo. Si la parada de uno de los motores falla, `
 ### Control básico con detención segura
 
 ```python
-import time
-from wedopy import Hub
+from wedo import Hub
 
 with Hub() as hub:
     motor = hub.motor("A")
     try:
         motor.run(75)
-        time.sleep(2)
+        hub.task.wait(2)
     finally:
         motor.stop()
 ```
@@ -103,22 +122,22 @@ with Hub() as hub:
 ### Control de un robot diferencial con dos motores
 
 ```python
-import time
-from wedopy import Hub
+from wedo import Hub
 
 with Hub() as hub:
     izq = hub.motor("A")
     der = hub.motor("B")
-    ambos = hub.motors(("A", "B"))
 
     # Avanzar recto con ambos motores
-    ambos.run(60)
-    time.sleep(2)
+    izq.run(60)
+    der.run(60)
+    hub.task.wait(2)
 
     # Girar sobre su propio eje (rotación diferencial)
     izq.run(50)
     der.run(-50)
-    time.sleep(1)
+    hub.task.wait(1)
 
-    ambos.stop()
+    izq.stop()
+    der.stop()
 ```

@@ -47,7 +47,12 @@ export class App extends Emitter {
     this._unsub = hub.subscribe((type, detail) => this._onCore(type, detail));
     this._log("info", `Conectando (${kind === "simulated" ? "simulador" : "Web Bluetooth"})…`);
     try {
-      await hub.connect();
+      // connect() solo inicia el intento: waitConnection() espera el desenlace (el
+      // selector de Bluetooth requiere un gesto del usuario, así que no se bloquea antes).
+      hub.connect();
+      if (!(await hub.waitConnection(60))) {
+        throw new Error("la conexión del hub no se completó");
+      }
     } catch (exc) {
       this._log("error", `No se pudo conectar: ${exc.message}`);
       this._setState(hub.state);
@@ -55,7 +60,7 @@ export class App extends Emitter {
     }
     this._log("info", "Conectado.");
     this.emit("hubname", { name: transport.deviceName ?? (kind === "simulated" ? "Hub simulado" : "WeDo 2.0 Smart Hub") });
-    this.emit("ports", { ports: hub.ports });
+    this.emit("ports", { ports: hub.ports() });
     await this.refreshBattery();
   }
 
@@ -95,7 +100,6 @@ export class App extends Emitter {
   async emergencyStop() {
     if (!this.hub) return;
     this._log("warn", "Parada de emergencia solicitada.");
-    try { await this.hub.tasks.cancel(); } catch { /* mejor esfuerzo */ }
     try { await this.hub.stopAll(); } catch (exc) { this._log("error", `Parada: ${exc.message}`); }
   }
 
@@ -121,7 +125,7 @@ export class App extends Emitter {
         this._setState(d.state);
         this._log(d.state === HubState.ERROR ? "error" : "info", `Estado: ${d.state}${d.error ? ` (${d.error})` : ""}`);
         break;
-      case "ports": this.emit("ports", { ports: this.hub.ports }); break;
+      case "ports": this.emit("ports", { ports: this.hub.ports() }); break;
       case "motor":
         this.activeMotors.set(d.conn, d.speed);
         this.emit("motor", d);

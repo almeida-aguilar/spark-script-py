@@ -1,15 +1,28 @@
-// Motores (equivalente a src/wedopy/motor.py).
+// Motores (API v0.2.0): `hub.motor("A")`.
+//
+//   motor.run(50)   # -100..100; el signo es el sentido, el valor absoluto la intensidad
+//   motor.stop()     # alias de run(0)
+//
+// No hay grupo de motores: para actuar sobre los dos se hacen dos llamadas explícitas,
+// así queda claro qué periférico recibe cada orden. El selector no exige conexión: los
+// errores de puerto aparecen al usar el manejador.
+import * as K from "../core/constants.js";
 
-function checkSpeed(speed) {
-  if (typeof speed !== "number" || !Number.isInteger(speed)) {
-    throw new TypeError(`speed must be an integer in -100..100, not ${typeof speed === "number" ? speed : typeof speed}`);
+const SPEEDS = "-100..100";
+
+/** El dispositivo solo admite enteros: un valor con parte decimal se redondea. */
+function checkSpeed(speed, port) {
+  if (typeof speed !== "number") {
+    throw new TypeError(`motor (puerto "${port}"): run esperaba un número y recibió ${typeof speed}`);
   }
-  if (speed < -100 || speed > 100) throw new RangeError(`speed must be in -100..100, got ${speed}`);
-  return speed;
+  if (!Number.isFinite(speed) || speed < -100 || speed > 100) {
+    throw new RangeError(`motor (puerto "${port}"): el valor ${speed} está fuera del rango ${SPEEDS}`);
+  }
+  return Math.round(speed);
 }
 
 export class Motor {
-  /** Un motor en el puerto `A` o `B`. El signo de `speed` es una dirección lógica. */
+  /** Un motor en el puerto indicado. El signo de la velocidad es una dirección lógica. */
   constructor(session, conn, port) {
     this._session = session;
     this._conn = conn;
@@ -18,36 +31,16 @@ export class Motor {
 
   /** Fija la velocidad lógica, -100..100. `run(0)` equivale a `stop()`. */
   run(speed) {
-    return this._session.core.setMotor(this._conn, checkSpeed(speed));
+    const value = checkSpeed(speed, this.port);
+    this._session.requireDevice(this._conn, K.TYPE_MOTOR);
+    return this._session.core.setMotor(this._conn, value);
   }
 
-  /** Pide parar el motor. El ACK confirma la comunicación, no que el eje se haya detenido. */
+  /** Pide parar el motor (alias de `run(0)`). */
   stop() {
+    this._session.requireDevice(this._conn, K.TYPE_MOTOR);
     return this._session.core.setMotor(this._conn, 0);
   }
 
   toString() { return `Motor('${this.port}')`; }
-}
-
-export class MotorGroup {
-  /** Varios motores accionados en orden determinista (A, luego B). No es atómico. */
-  constructor(motors) {
-    this._motors = [...motors].sort((a, b) => (a.port < b.port ? -1 : a.port > b.port ? 1 : 0));
-  }
-
-  async run(speed) {
-    checkSpeed(speed);
-    for (const m of this._motors) await m.run(speed);
-  }
-
-  /** Intenta parar todos; lanza el primer error tras intentarlos todos. */
-  async stop() {
-    let first = null;
-    for (const m of this._motors) {
-      try { await m.stop(); } catch (exc) { first ??= exc; }
-    }
-    if (first) throw first;
-  }
-
-  toString() { return `MotorGroup(${this._motors.map((m) => `'${m.port}'`).join(", ")})`; }
 }

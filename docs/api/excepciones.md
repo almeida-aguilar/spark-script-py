@@ -1,34 +1,29 @@
 ---
 layout: default
 title: "API: Excepciones"
-description: Jerarquía de excepciones y gestión de errores en wedopy
+description: Jerarquía de excepciones y gestión de errores en el paquete wedo (v0.2.0)
 prev:
   title: Tareas Cooperativas
   url: /api/tareas.html
 next:
-  title: Tiempo
-  url: /api/tiempo.html
+  title: Arquitectura y Seguridad
+  url: /arquitectura.html
 ---
 
 # Jerarquía de Excepciones
 
-`wedopy` proporciona una jerarquía de excepciones estructurada y explícita para que puedas capturar y gestionar cualquier fallo de hardware o comunicación de forma precisa.
+Los errores se expresan mediante excepciones nativas de Python. La API no adopta como convención general el retorno de códigos de error ni introduce un sistema paralelo.
 
-Todas las excepciones pueden importarse desde `wedopy` o desde `wedopy.exceptions`:
+Todas las excepciones públicas pueden importarse desde el paquete raíz:
 
 ```python
-from wedopy.exceptions import (
+from wedo import (
     WedoError,
-    BLEError,
-    HubConnectionError,
-    HubDisconnectedError,
-    OperationTimeout,
-    HubBusyError,
-    DeviceNotFoundError,
-    DeviceTypeError,
-    AmbiguousDeviceError,
-    InvalidStateError,
-    UnsupportedFeatureError,
+    NotConnectedError,
+    ConnectionFailedError,
+    PortError,
+    NoReadingError,
+    TaskCancelled,
 )
 ```
 
@@ -38,85 +33,89 @@ from wedopy.exceptions import (
 
 ```
 Exception
-└── WedoError (Base para todas las excepciones de wedopy)
-    ├── BLEError (Fallos de bajo nivel en transporte y Bluetooth)
-    │   ├── HubConnectionError (No se encontró el Hub o falló el emparejamiento)
-    │   ├── HubDisconnectedError (Pérdida inesperada de conexión BLE)
-    │   ├── OperationTimeout (Expiró el tiempo de espera de una operación)
-    │   └── HubBusyError (El bus BLE no pudo admitir la solicitud en este momento)
-    ├── DeviceNotFoundError (No hay dispositivo conectado en el puerto especificado)
-    ├── DeviceTypeError (El tipo de dispositivo en el puerto no coincide con el solicitado)
-    ├── AmbiguousDeviceError (Múltiples dispositivos del mismo tipo sin indicar puerto)
-    ├── InvalidStateError (Operación no válida en el estado actual del hub o planificador)
-    └── UnsupportedFeatureError (Característica no soportada por el firmware)
+└── WedoError (Base para todas las excepciones de wedo)
+    ├── NotConnectedError (El hub no está conectado o la conexión se perdió)
+    ├── ConnectionFailedError (El intento de conexión falló o se agotó el tiempo)
+    ├── PortError (Puerto vacío o con un periférico de otro tipo)
+    └── NoReadingError (El sensor todavía no ha informado su primera lectura)
+
+BaseException
+└── TaskCancelled (La tarea fue cancelada; no es un error de ejecución)
 ```
+
+Los demás errores usan las excepciones estándar de Python: `ValueError` (fuera de rango, filtro no admitido, color desconocido, puerto no válido), `TypeError` (argumento de tipo o número incorrecto) y `RuntimeError` (espera cooperativa fuera del flujo principal o de una tarea).
 
 ---
 
 ## 📋 Descripción Detallada
 
+| Situación | Excepción | Mensaje |
+|---|---|---|
+| Hub no conectado | `NotConnectedError` | `hub no conectado` |
+| Nombre de puerto no válido | `ValueError` | `puerto "x" no válido (puertos válidos: a, b)` |
+| Puerto vacío | `PortError` | `puerto "a": no hay ningún periférico conectado (se esperaba "motor")` |
+| Periférico de otro tipo | `PortError` | `puerto "a": hay un periférico "distance" y se esperaba "motor"` |
+| Sin lectura disponible | `NoReadingError` | `distance (puerto "a"): todavía no hay ninguna lectura disponible` |
+| Valor fuera de rango | `ValueError` | `motor (puerto "a"): el valor 150 está fuera del rango -100..100` |
+| Filtro no admitido | `ValueError` | `button: filtro "pressd" no admitido (admitidos: "pressed", "released")` |
+| Color desconocido | `ValueError` | `led: color "green" no válido (colores válidos: off, pink, ...)` |
+| Tipo de argumento | `TypeError` | `motor (puerto "a"): run esperaba un número y recibió str` |
+| Conexión fallida | `ConnectionFailedError` | `no se pudo conectar con el hub` |
+| Tiempo agotado en `with` | `ConnectionFailedError` | `no se pudo conectar con el hub (tiempo de espera agotado: 10 s)` |
+| Espera fuera de contexto | `RuntimeError` | `wait solo puede usarse en el flujo principal o dentro de una tarea` |
+
+Los mensajes están en español e identifican el recurso y, cuando existe, el puerto (en minúsculas). La ubicación del error la aporta el *traceback* de Python.
+
+> [!IMPORTANT]
+> Los programas **no deben depender del texto exacto**: para distinguir situaciones se capturan los tipos de excepción o se usa la lógica del programa (`hub.ports()`, `hub.wait_connection()`), no el análisis de cadenas.
+
 ### `WedoError`
-Excepción base para todos los errores generados por la biblioteca. Si deseas capturar cualquier problema originado por `wedopy`, captura esta clase.
+Excepción base para todos los errores generados por la biblioteca. Si deseas capturar cualquier problema originado por `wedo`, captura esta clase.
 
-### `BLEError`
-Representa anomalías en la capa Bluetooth Low Energy (D-Bus, BlueZ o fallos de GATT).
+### `NotConnectedError`
+Se lanza al usar un recurso con el hub desconectado, y también cuando la conexión se pierde durante una espera (`wait_change()` termina con ella). Es la excepción más frecuente: cubre tanto el «aún no conectado» como el «se acaba de perder el enlace».
 
-### `HubConnectionError`
-Se lanza cuando `hub.connect()` o `with Hub()` no consigue encontrar ningún Smart Hub en modo anuncio (*advertising*) tras el tiempo límite de búsqueda (15 segundos por defecto), o si la negociación inicial de servicios GATT falla.
+### `ConnectionFailedError`
+El intento de conexión falla o es rechazado, o (en el bloque `with`) se agota `connect_timeout`. `wait_connection()` lo lanza para informar del fallo una sola vez.
 
-### `HubDisconnectedError`
-Se produce cuando el Smart Hub pierde el enlace de radio de forma involuntaria (por ejemplo, al agotarse las pilas o al alejarse demasiado del ordenador).
+### `PortError`
+Se produce al usar un recurso sobre un puerto donde no hay ningún periférico conectado, o donde hay un periférico de otro tipo. Ejemplo: `hub.motor("A").run(50)` cuando en el puerto A hay un sensor.
 
-### `OperationTimeout`
-Se emite cuando una lectura o escritura BLE no recibe confirmación (ACK) dentro del tiempo de espera estipulado (por defecto 1.0 segundo).
+### `NoReadingError`
+Un sensor todavía no ha informado ninguna lectura. Suele ocurrir con un periférico enchufado después de la conexión: hasta que informe su primer valor, `read()` lanza esta excepción.
 
-### `HubBusyError`
-Se genera si la cola interna del coordinador BLE está saturada o si una operación colisiona con una orden de emergencia en curso.
-
-### `DeviceNotFoundError`
-Se produce al invocar `hub.motor()`, `hub.distance_sensor()` o `hub.tilt_sensor()` sobre un puerto donde no hay ningún periférico conectado, o si se omite el puerto y no existe ningún dispositivo de ese tipo en todo el hub.
-
-### `DeviceTypeError`
-Se produce cuando intentas acceder a un puerto que contiene un dispositivo distinto al esperado. Por ejemplo, llamar a `hub.motor("A")` cuando en el puerto A está conectado un sensor de inclinación.
-
-### `AmbiguousDeviceError`
-Se produce cuando solicitas un dispositivo sin especificar puerto (por ejemplo, `hub.motor()`), pero hay dos dispositivos de ese mismo tipo conectados en A y en B simultáneamente. La biblioteca te obliga a especificar el puerto explícitamente (`"A"` o `"B"`).
-
-### `InvalidStateError`
-Se lanza ante secuencias de operaciones inconsistentes, como intentar llamar a `hub.tasks.wait()` dentro de una tarea en ejecución, o solicitar operaciones a un hub que ya ha sido desconectado o apagado.
-
-### `UnsupportedFeatureError`
-Se lanza al intentar utilizar funciones no admitidas por el hardware o por la versión del firmware WeDo 2.0.
+### `TaskCancelled`
+La cancelación de una tarea se entrega como esta excepción dentro de la tarea (en su siguiente punto cooperativo). **Deriva de `BaseException`, no de `WedoError`**, de modo que un `except Exception:` no la captura por accidente. La cancelación es persistente: tras el pedido, todo punto cooperativo posterior vuelve a lanzarla. Más detalles en [Tareas Cooperativas](tareas.html).
 
 ---
 
 ## 💡 Ejemplo de manejo de excepciones
 
 ```python
-from wedopy import Hub
-from wedopy.exceptions import (
-    HubConnectionError,
-    DeviceNotFoundError,
-    OperationTimeout,
-    WedoError,
-)
+from wedo import Hub, ConnectionFailedError, PortError, NoReadingError, WedoError
 
 try:
     with Hub() as hub:
-        motor = hub.motor("A")
-        sensor = hub.distance_sensor("B")
+        motor = hub.motor("a")
+        sensor = hub.distance("b")
         motor.run(80)
 
-        # Esperar lectura
         distancia = sensor.read()
         print("Distancia:", distancia)
 
-except HubConnectionError:
-    print("Error: No se encontró ningún Smart Hub. ¿Está encendido el botón y parpadea el LED?")
-except DeviceNotFoundError as e:
-    print(f"Error de puertos: {e}")
-except OperationTimeout:
-    print("Tiempo de espera agotado al comunicar con el sensor.")
-except WedoError as e:
-    print(f"Ocurrió un error en wedopy: {e}")
+except ConnectionFailedError:
+    print("No se encontró ningún Smart Hub. ¿Está encendido y parpadea el LED?")
+except PortError as error:
+    print("Error de puertos:", error)
+except NoReadingError:
+    print("El sensor aún no ha dado su primera lectura.")
+except WedoError as error:
+    print("Ocurrió un error en wedo:", error)
+```
+
+Para evitar `PortError` se puede consultar antes qué hay en cada puerto:
+
+```python
+if hub.ports().get("a") == "motor":
+    hub.motor("A").run(50)
 ```

@@ -36,6 +36,20 @@
   <div id="compat" class="banner" hidden></div>
   <div id="unsafe" class="banner danger" role="alert" hidden></div>
 
+  <dialog id="dlg-export" class="dlg" aria-labelledby="dlg-export-title">
+    <form id="export-form">
+      <h2 id="dlg-export-title">Exportar programa</h2>
+      <label for="export-name">Nombre del fichero</label>
+      <input id="export-name" type="text" value="mi_programa.py" spellcheck="false" autocomplete="off"
+             autocapitalize="off" placeholder="mi_programa.py">
+      <p class="hint">Se descarga como fichero Python (<code>.py</code>).</p>
+      <div class="dlg-actions">
+        <button type="button" id="export-cancel">Cancelar</button>
+        <button type="submit" class="primary">Exportar</button>
+      </div>
+    </form>
+  </dialog>
+
   <div id="layout">
     <!-- Izquierda: editor -->
     <section id="left">

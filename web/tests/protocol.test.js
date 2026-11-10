@@ -56,7 +56,7 @@ describe("notificaciones", () => {
     expect(decodeTiltAngle(Uint8Array.of(0xfb, 0x0a))).toEqual([-5, 10]);
     expect(decodeTiltAngle(f32(12.4, -30.6))).toEqual([12, -31]);
     expect(() => decodeTiltAngle(f32(NaN, 1))).toThrow(RangeError);
-    const names = { 0: "neutral", 3: "back", 5: "right", 7: "left", 9: "forward" };
+    const names = { 0: "none", 3: "backward", 5: "right", 7: "left", 9: "forward" };
     for (const [code, name] of Object.entries(names)) expect(tiltDirectionName(f32(Number(code)))).toBe(name);
     expect(tiltDirectionName(f32(4))).toBe("unknown");
   });

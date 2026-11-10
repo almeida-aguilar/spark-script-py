@@ -151,13 +151,14 @@ describe("WebBluetoothTransport (doble del navegador)", () => {
   it("funciona de extremo a extremo con la API Hub sobre el doble", async () => {
     const f = fakeBluetooth();
     const hub = new Hub({ transport: new WebBluetoothTransport({ bluetooth: f.bluetooth }), timing: FAST });
-    await hub.connect();
-    expect(hub.ports).toEqual({ A: "motor" });
+    hub.connect();
+    await hub.waitConnection(5);
+    expect(hub.ports()).toEqual({ a: "motor" });
     expect(await hub.readBattery()).toBe(91);
     await hub.motor("A").run(-50);
     expect(f.chars.get(K.CHAR_OUTPUT_CMD).writes.at(-1)).toEqual(Uint8Array.of(1, 1, 1, 0xce));
     f.chars.get(K.CHAR_BUTTON).push([1]);
-    expect(await waitFor(() => hub.button.isPressed)).toBe(true);
+    expect(await waitFor(() => hub.button.read())).toBe(true);
     await hub.disconnect();
     expect(f.chars.get(K.CHAR_OUTPUT_CMD).writes.at(-1)).toEqual(Uint8Array.of(1, 1, 1, 0)); // parada al desconectar
     expect(f.device.gatt.connected).toBe(false);

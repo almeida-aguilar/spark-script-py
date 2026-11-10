@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Ejemplos Prácticos
-description: Scripts y ejemplos listos para ejecutar con wedopy
+description: Scripts y ejemplos listos para ejecutar con el paquete wedo
 prev:
   title: Arquitectura y Seguridad
   url: /arquitectura.html
@@ -14,133 +14,156 @@ next:
 
 Esta sección contiene programas completos probados en hardware real, listos para copiar, ejecutar y adaptar a tus propios modelos de LEGO WeDo 2.0.
 
-Los archivos fuente de estos ejemplos se encuentran disponibles en la carpeta [`examples/`](https://github.com/almeida-aguilar/wedopy/tree/main/examples) del repositorio.
+Los archivos fuente de estos ejemplos están disponibles en el editor Python de la [app web de wedopy]({{ site.web_app_url }}) y en la carpeta del repositorio.
 
 ---
 
 ## 1. Concurrencia con Tareas: Luces y Movimiento
 
-`examples/blink_and_move.py` demuestra cómo hacer parpadear el LED en bucle continuo mientras un motor gira durante 3 segundos, utilizando tareas cooperativas sin bloquear el programa ni recurrir a hilos.
+`blink_and_move.py` demuestra cómo hacer parpadear el LED mientras un motor gira durante 3 segundos, con dos tareas cooperativas que se alternan sin bloquear el programa.
 
 ```python
 """Blink the LED while a motor runs, using cooperative tasks (no threads, no asyncio)."""
-from wedopy import Hub, task
+from wedo import Hub
 
 with Hub() as hub:
+    motor = hub.motor("A")
+
     def blink():
-        while True:
-            hub.led.index(7)   # Amarillo
-            yield task.sleep(0.3)
-            hub.led.index(10)  # Blanco
-            yield task.sleep(0.3)
+        for _ in range(10):
+            hub.led.color("yellow")
+            hub.task.wait(0.3)
+            hub.led.color("white")
+            hub.task.wait(0.3)
 
     def move():
-        motor = hub.motor("A")
-        try:
+        try:                      # cancelar una tarea nunca detiene el motor por sí sola
             motor.run(75)
-            yield task.sleep(3)
+            hub.task.wait(3)
         finally:
             motor.stop()
 
-    # La tarea de fondo se cancela automáticamente al terminar 'move'
-    hub.tasks.add(blink, background=True)
-    hub.tasks.add(move)
-    hub.tasks.wait()
+    hub.task.spawn(blink)
+    hub.task.spawn(move)
+    # Al salir del bloque se espera a que terminen las tareas.
 ```
 
 ---
 
 ## 2. Vehículo Evasor de Obstáculos
 
-`examples/distance_sensor.py` acciona el motor al 70% de potencia y supervisa el sensor de proximidad en tiempo real. Cuando un obstáculo se encuentra a menos de nivel 3 (muy cerca), el vehículo frena inmediatamente.
+`distance_sensor.py` acciona el motor al 70% de potencia y supervisa el sensor de proximidad en tiempo real. Cuando un obstáculo se encuentra a menos de nivel 3 (muy cerca), el vehículo frena inmediatamente.
 
 ```python
 """Drive until the distance sensor reports something nearer than 3 (scale 0..10)."""
-import time
-from wedopy import Hub, OperationTimeout
+from wedo import Hub
 
 with Hub() as hub:
-    sensor = hub.distance_sensor("B")
+    sensor = hub.distance("B")
     motor = hub.motor("A")
 
-    motor.run(70)
-    print("Avanzando... esperando obstáculo frente al sensor B")
-
-    while True:
+    def drive():
         try:
-            if sensor.is_near(3):
-                print("¡Obstáculo detectado a menos de nivel 3!")
-                break
-        except OperationTimeout:
-            print("Sin respuesta del sensor; deteniendo por seguridad")
-            break
-        time.sleep(0.05)
+            motor.run(70)
+            while sensor.read() > 3:
+                hub.task.wait(0.05)
+        finally:
+            motor.stop()
 
-    motor.stop()
+    hub.task.spawn(drive)
+    drive.join()
+    hub.led.color("light_green")
 ```
 
 ---
 
-## 3. Robot de Dos Motores (`MotorGroup`)
+## 3. Robot de Dos Motores
 
-`examples/two_motors.py` controla simultáneamente dos motores conectados a los puertos A y B (por ejemplo, las dos ruedas motrices de un vehículo), garantizando que ambos se detengan incluso si ocurre un error en uno de ellos.
+`two_motors.py` controla simultáneamente dos motores conectados a los puertos A y B (por ejemplo, las dos ruedas motrices de un vehículo). No hay grupo de motores: se hacen dos llamadas explícitas, así queda claro qué periférico recibe cada orden.
 
 ```python
-"""Drive two motors together (A first, then B; not atomic), then stop."""
-import time
-from wedopy import Hub
+"""Drive two motors together (two explicit calls, one per motor), then stop."""
+from wedo import Hub
 
 with Hub() as hub:
-    motors = hub.motors(("A", "B"))
+    a = hub.motor("A")
+    b = hub.motor("B")
 
-    print("Iniciando tracción doble...")
-    motors.run(75)
-    time.sleep(2)
+    a.run(75)
+    b.run(75)
+    hub.task.wait(2)
 
-    print("Deteniendo motores...")
-    motors.stop()
+    a.stop()
+    b.stop()
 ```
 
 ---
 
 ## 4. Monitor de Orientación con Sensor de Inclinación
 
-`examples/tilt_sensor.py` toma 20 muestras periódicas reportando el ángulo 2D y la dirección física (`neutral`, `forward`, `back`, `left`, `right`).
+`tilt_sensor.py` toma 20 muestras periódicas reportando la dirección física (`left`, `right`, `forward`, `backward`, `none`) y los dos ejes en grados.
 
 ```python
-"""Print the tilt angle and direction."""
-import time
-from wedopy import Hub
+"""Print the tilt direction and both axes."""
+from wedo import Hub
 
 with Hub() as hub:
-    tilt = hub.tilt_sensor("A")
+    tilt = hub.tilt("A")
 
-    print("Mueve el sensor de inclinación en el puerto A:")
     for _ in range(20):
-        print(f"Ángulo: {tilt.read_angle()} | Dirección: {tilt.read_direction()}")
-        time.sleep(0.25)
+        print("direction", tilt.read(), "| x", tilt.x.read(), "| y", tilt.y.read())
+        hub.task.wait(0.25)
 ```
 
 ---
 
 ## 5. Espectro y Ciclo de Colores LED
 
-`examples/led.py` recorre uno a uno todos los colores indexados de la paleta oficial de LEGO WeDo 2.0 y finaliza encendiendo un color RGB personalizado.
+`led.py` recorre uno a uno los once colores predefinidos de la paleta del dispositivo y finaliza encendiendo un color RGB personalizado.
 
 ```python
-"""Cycle through the indexed LED colours, then show an RGB colour."""
-import time
-from wedopy import Hub
+"""Cycle through the predefined LED colours, then show an RGB colour."""
+from wedo import Hub
+
+COLOURS = ["pink", "purple", "blue", "light_blue", "light_green", "dark_green",
+           "yellow", "orange", "red", "white"]
 
 with Hub() as hub:
-    # Recorrer colores oficiales del 1 al 10
-    for i in range(1, 11):
-        hub.led.index(i)
-        time.sleep(0.3)
+    for colour in COLOURS:
+        hub.led.color(colour)
+        hub.task.wait(0.3)
+    hub.led.color(255, 80, 0)
+    hub.task.wait(1)
+```
 
-    # Establecer color RGB naranja brillante
-    hub.led.rgb(255, 80, 0)
-    time.sleep(1)
+---
 
-    hub.led.off()
+## 6. Avanzar hasta pulsar el botón, con límite de tiempo
+
+Combinación de botón, motor y una tarea vigilante que impone un plazo sin necesidad de parámetros de *timeout*:
+
+```python
+from wedo import Hub
+
+with Hub() as hub:
+    motor = hub.motor("A")
+    button = hub.button
+
+    def drive():
+        try:
+            motor.run(50)
+            button.wait_change("pressed")
+        finally:
+            motor.stop()
+
+    def limit():
+        hub.task.wait(5)
+        drive_task.cancel()
+
+    drive_task = hub.task.spawn(drive)
+    limit_task = hub.task.spawn(limit)
+
+    drive_task.join()
+    limit_task.cancel()
+    hub.led.color("light_green")
 ```

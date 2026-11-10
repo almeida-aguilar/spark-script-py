@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Guía de Inicio Rápido
-description: Primeros pasos y ejemplos prácticos para controlar WeDo 2.0 con wedopy
+description: Primeros pasos y ejemplos prácticos para controlar WeDo 2.0 con el paquete wedo
 prev:
   title: Instalación
   url: /instalacion.html
@@ -12,7 +12,7 @@ next:
 
 # Guía de Inicio Rápido
 
-¡Bienvenido a `wedopy`! En pocos minutos tendrás tu primer programa comunicándose con el LEGO WeDo 2.0 Smart Hub.
+¡Bienvenido a `wedo`! En pocos minutos tendrás tu primer programa comunicándose con el LEGO WeDo 2.0 Smart Hub.
 
 ---
 
@@ -26,149 +26,157 @@ next:
 
 ## 2. El Context Manager `with Hub()`
 
-La forma recomendada de usar `wedopy` es mediante un bloque `with Hub() as hub:`. Este se encarga de:
-- Descubrir el primer Smart Hub cercano y conectarse a él.
-- Descubrir automáticamente los dispositivos conectados en los puertos A y B.
-- Al salir (por fin de programa o por excepción), cancelar tareas pendientes, detener todos los motores y cerrar la conexión BLE de forma limpia.
+La forma recomendada de usar `wedo` es mediante un bloque `with Hub() as hub:`. Este se encarga de:
+- Iniciar la conexión y esperar a que se complete (10 segundos por defecto; con `Hub(connect_timeout=30)` das más margen).
+- Identificar los periféricos conectados en los puertos A y B y recibir la primera lectura de sus sensores.
+- Al salir (por fin de programa o por excepción), cancelar las tareas pendientes, detener todos los motores y cerrar la conexión BLE de forma limpia.
 
 ```python
-from wedopy import Hub
+from wedo import Hub
 
 with Hub() as hub:
     print("¡Conectado al Smart Hub!")
-    print("Dispositivos detectados:", hub.ports)
+    print("Dispositivos detectados:", hub.ports())
 ```
 
 Salida típica:
 ```text
 ¡Conectado al Smart Hub!
-Dispositivos detectados: {'A': 'motor', 'B': 'tilt'}
+Dispositivos detectados: {'a': 'motor', 'b': 'tilt'}
 ```
+
+Los nombres de puerto se escriben con `A` o `B`, aunque no se distinguen mayúsculas de minúsculas: `hub.motor("a")` y `hub.motor("A")` son equivalentes.
 
 ---
 
 ## 3. Controlar un Motor
 
-Conecta un motor en el puerto **A** o **B**. Puedes seleccionarlo explícitamente indicando el puerto, o dejar que `wedopy` lo detecte automáticamente si solo hay uno conectado.
+Conecta un motor en el puerto **A** o **B** y selecciónalo por puerto de forma explícita:
 
 ```python
-import time
-from wedopy import Hub
+from wedo import Hub
 
 with Hub() as hub:
-    # Obtener el motor en el puerto A
     motor = hub.motor("A")
 
-    # Girar hacia adelante a 70% de potencia
+    # Girar hacia adelante al 70 %
     print("Girando hacia adelante...")
     motor.run(70)
-    time.sleep(2)
+    hub.task.wait(2)
 
-    # Invertir la dirección (-70%)
+    # Invertir la dirección (-70 %)
     print("Invirtiendo marcha...")
     motor.run(-70)
-    time.sleep(2)
+    hub.task.wait(2)
 
     # Detener el motor
     motor.stop()
 ```
 
-> **Consejo:** Si solo tienes un motor conectado al hub, puedes escribir simplemente `motor = hub.motor()` sin pasar el puerto.
+> [!IMPORTANT]
+> Para esperar se usa `hub.task.wait()`, no `time.sleep()`: una espera bloqueante detendría también a las demás tareas y el procesamiento de eventos del dispositivo.
+
+El valor de `run()` va de `-100` a `100`: el signo determina el sentido de giro y el valor absoluto la intensidad. Un valor con parte decimal se redondea al entero más cercano.
 
 ---
 
 ## 4. Cambiar el color del LED
 
-El Smart Hub incluye un LED RGB que puede configurarse por índice de color (0 a 10) o mediante valores RGB directos (0 a 255):
+El LED integrado se controla con `hub.led.color()`, por nombre o con canales RGB (0 a 255):
 
 ```python
-import time
-from wedopy import Hub
+from wedo import Hub
 
 with Hub() as hub:
-    # Colores indexados
     print("Color azul...")
-    hub.led.index(3)      # 3 = Azul
-    time.sleep(1)
+    hub.led.color("blue")
+    hub.task.wait(1)
 
-    print("Color verde...")
-    hub.led.index(6)      # 6 = Verde
-    time.sleep(1)
+    print("Color verde claro...")
+    hub.led.color("light_green")
+    hub.task.wait(1)
 
-    # Color RGB personalizado (Naranja brillante)
+    # Color RGB personalizado (naranja brillante)
     print("Color RGB naranja...")
-    hub.led.rgb(255, 100, 0)
-    time.sleep(1)
+    hub.led.color(255, 100, 0)
+    hub.task.wait(1)
 
     # Apagar el LED
-    hub.led.off()
+    hub.led.color("off")
 ```
+
+Los nombres válidos son once: `off`, `pink`, `purple`, `blue`, `light_blue`, `light_green`, `dark_green`, `yellow`, `orange`, `red` y `white`. Un nombre desconocido lanza `ValueError` listando los colores válidos (no hay alias, por ejemplo no existe `"green"`).
 
 ---
 
 ## 5. Leer el Sensor de Distancia
 
-El sensor de distancia mide proximidad en una escala entera calibrada de **0** (objeto muy cerca) a **10** (despejado).
+El sensor de distancia devuelve una escala entera de **0** (objeto muy cerca) a **10** (despejado):
 
 ```python
-import time
-from wedopy import Hub, OperationTimeout
+from wedo import Hub
 
 with Hub() as hub:
-    sensor = hub.distance_sensor("B")
+    sensor = hub.distance("B")
 
     print("Acerca tu mano al sensor de distancia...")
     for _ in range(10):
-        try:
-            dist = sensor.read()
-            print(f"Distancia: {dist} | ¿Cerca?: {sensor.is_near(4)}")
-        except OperationTimeout:
-            print("Esperando nuevo movimiento...")
-        time.sleep(0.5)
+        dist = sensor.read()
+        print(f"Distancia: {dist}")
+        hub.task.wait(0.5)
+```
+
+También puedes reaccionar a cambios en lugar de sondear:
+
+```python
+from wedo import Hub
+
+with Hub() as hub:
+    sensor = hub.distance("B")
+
+    def cerca():
+        sensor.wait_change("decrease")
+        hub.led.color("red")
+        hub.motor("A").stop()
+
+    hub.task.spawn(cerca)
 ```
 
 ---
 
 ## 6. Leer el Sensor de Inclinación (Tilt)
 
-El sensor de inclinación WeDo 2.0 detecta cinco orientaciones físicas: `neutral`, `back` (atrás), `right` (derecha), `left` (izquierda) y `forward` (adelante), además de los ángulos en grados `(x, y)`:
+El sensor de inclinación detecta cinco direcciones (`left`, `right`, `forward`, `backward`, `none`) y ofrece dos ejes en grados:
 
 ```python
-import time
-from wedopy import Hub
+from wedo import Hub
 
 with Hub() as hub:
-    tilt = hub.tilt_sensor()
+    tilt = hub.tilt("A")
 
     print("Inclina el sensor en diferentes direcciones...")
     for _ in range(10):
-        direccion = tilt.read_direction()
-        angulo = tilt.read_angle()
-        print(f"Dirección: {direccion:<8} | Ángulo (x, y): {angulo}")
-        time.sleep(0.5)
+        print(f"Dirección: {tilt.read():<8} | x: {tilt.x.read():+d} | y: {tilt.y.read():+d}")
+        hub.task.wait(0.5)
 ```
 
-> **Importante:** Por diseño del firmware WeDo 2.0, los sensores solo transmiten datos por BLE cuando detectan un cambio físico. Si el sensor está completamente inmóvil, `read()` devolverá la última muestra conocida o esperará hasta que ocurra un movimiento físico.
+> **Importante:** Por diseño del firmware WeDo 2.0, los sensores solo transmiten datos por BLE cuando detectan un cambio físico. Si el sensor está completamente inmóvil, no llegan nuevas muestras; el hub informa la primera lectura al conectar y después solo cambia cuando el valor cambia.
 
 ---
 
 ## 7. Leer el Botón del Hub
 
-El botón físico central puede consultarse en cualquier momento sin bloquear:
+El botón físico central devuelve `True` mientras está presionado:
 
 ```python
-import time
-from wedopy import Hub
+from wedo import Hub
 
 with Hub() as hub:
-    print("Pulsa y suelta el botón central del Smart Hub...")
-    for _ in range(20):
-        if hub.button.is_pressed:
-            print("¡Botón presionado!")
-            hub.led.index(9) # Rojo
-        else:
-            hub.led.index(6) # Verde
-        time.sleep(0.2)
+    print("Pulsa el botón central del Smart Hub...")
+    hub.button.wait_change("pressed")
+    hub.led.color("red")
+    hub.button.wait_change("released")
+    hub.led.color("light_green")
 ```
 
 ---

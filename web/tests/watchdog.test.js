@@ -1,7 +1,7 @@
 // Escenarios de tests/test_safety.py de la biblioteca Python, portados a la versión web.
 import { describe, expect, it } from "vitest";
 import * as K from "../src/core/constants.js";
-import { BLEError, HubDisconnectedError } from "../src/core/errors.js";
+import { BLEError, NotConnectedError } from "../src/core/errors.js";
 import { HubState } from "../src/core/state-machine.js";
 import { Coordinator } from "../src/core/coordinator.js";
 import { coreOf, makeHub, sleep, waitFor, FAST } from "./helpers.js";
@@ -16,7 +16,8 @@ describe("watchdog y seguridad", () => {
   it("para los motores cuando falla el heartbeat pero las escrituras funcionan", async () => {
     const { hub, sim } = makeHub();
     const log = captureLog(hub);
-    await hub.connect();
+    hub.connect();
+    await hub.waitConnection(5);
     try {
       await hub.motor("A").run(60);
       expect(sim.motors[1]).toBe(60);
@@ -31,20 +32,22 @@ describe("watchdog y seguridad", () => {
   it("informa de parada NO confirmada cuando el hub deja de responder", async () => {
     const { hub, sim } = makeHub();
     const log = captureLog(hub);
-    await hub.connect();
+    hub.connect();
+    await hub.waitConnection(5);
     try {
       await hub.motor("A").run(60);
       sim.freeze();
       expect(await waitFor(() => coreOf(hub).state === HubState.ERROR, 4.0)).toBe(true);
       expect(log.some((m) => m.includes("stop NOT confirmed (2 attempts)"))).toBe(true);
       sim.unfreeze();
-      expect(() => hub.motor("A")).toThrow(HubDisconnectedError); // errores explícitos, nada se oculta
+      expect(() => hub.motor("a").run(1)).toThrow(NotConnectedError); // errores explícitos, nada se oculta
     } finally { await hub.disconnect(); }
   });
 
   it("no genera tráfico de heartbeat con los motores parados", async () => {
     const { hub, sim } = makeHub();
-    await hub.connect();
+    hub.connect();
+    await hub.waitConnection(5);
     try {
       await sleep(0.4);
       expect(sim.reads).not.toContain(K.CHAR_BATTERY);
@@ -56,25 +59,26 @@ describe("watchdog y seguridad", () => {
 
   it("la pérdida de enlace pasa a ERROR y toda operación falla explícitamente", async () => {
     const { hub, sim } = makeHub({ A: "motor", B: "distance" });
-    await hub.connect();
+    hub.connect();
+    await hub.waitConnection(5);
     const motor = hub.motor("A");
     await motor.run(50);
     sim.dropLink();
     expect(await waitFor(() => coreOf(hub).state === HubState.ERROR)).toBe(true);
     expect(hub.isConnected).toBe(false);
-    await expect(motor.run(10)).rejects.toBeInstanceOf(HubDisconnectedError);
-    await expect(hub.led.on()).rejects.toBeInstanceOf(HubDisconnectedError);
-    expect(() => hub.button.isPressed).toThrow(HubDisconnectedError);
+    expect(() => motor.run(10)).toThrow(NotConnectedError);
+    expect(() => hub.led.color("red")).toThrow(NotConnectedError);
+    expect(() => hub.button.read()).toThrow(NotConnectedError);
     await hub.disconnect(); // limpia una conexión fallida sin excepción
     expect(coreOf(hub).state).toBe(HubState.DISCONNECTED);
   });
 
   it("disconnect con un hub mudo informa de parada sin confirmar", async () => {
     const { hub, sim } = makeHub();
-    await hub.connect();
+    hub.connect();
+    await hub.waitConnection(5);
     await hub.motor("A").run(50);
     sim.freeze();
-    await hub._session.tasks.cancel();
     const confirmed = await coreOf(hub).disconnect();
     expect(confirmed).toBe(false);
     expect(coreOf(hub).state).toBe(HubState.DISCONNECTED);
@@ -82,7 +86,8 @@ describe("watchdog y seguridad", () => {
 
   it("las peticiones de emergencia se ejecutan antes que las normales encoladas", async () => {
     const { hub } = makeHub();
-    await hub.connect();
+    hub.connect();
+    await hub.waitConnection(5);
     try {
       const c = coreOf(hub);
       const order = [];
@@ -101,7 +106,8 @@ describe("watchdog y seguridad", () => {
 
   it("el escritor único serializa llamadores concurrentes", async () => {
     const { hub, sim } = makeHub({ A: "motor", B: "motor" }, { ackDelay: 0.005 });
-    await hub.connect();
+    hub.connect();
+    await hub.waitConnection(5);
     try {
       let inFlight = 0; let maxInFlight = 0;
       const original = sim.write.bind(sim);
@@ -118,7 +124,8 @@ describe("watchdog y seguridad", () => {
 
   it("stopAll sigue tras un fallo y lo informa", async () => {
     const { hub, sim } = makeHub({ A: "motor", B: "motor" });
-    await hub.connect();
+    hub.connect();
+    await hub.waitConnection(5);
     try {
       await hub.motor("A").run(30);
       await hub.motor("B").run(30);
@@ -141,7 +148,8 @@ describe("watchdog y seguridad", () => {
 
   it("no ejecuta órdenes antiguas tras reconectar", async () => {
     const { hub, sim } = makeHub({ A: "motor" }, { ackDelay: 0.05 });
-    await hub.connect();
+    hub.connect();
+    await hub.waitConnection(5);
     const c = coreOf(hub);
     const motor = hub.motor("A");
     const stale = [motor.run(10), motor.run(20), motor.run(30)]; // encoladas
@@ -153,23 +161,24 @@ describe("watchdog y seguridad", () => {
     expect(results.slice(1).every((r) => r.status === "rejected")).toBe(true);
     const sentAfterClose = sim.writesTo(K.CHAR_OUTPUT_CMD).slice(before).map((d) => d[3]);
     expect(sentAfterClose.filter((v) => v === 20 || v === 30)).toEqual([]);
-    await hub.connect(); // reconexión
+    hub.connect();
+    await hub.waitConnection(5); // reconexión
     expect(sim.writesTo(K.CHAR_OUTPUT_CMD).slice(before).map((d) => d[3]).filter((v) => v === 20 || v === 30)).toEqual([]);
     await hub.disconnect();
   });
 
   it("el watchdog es independiente del planificador de tareas", async () => {
     const { hub, sim } = makeHub();
-    await hub.connect();
+    hub.connect();
+    await hub.waitConnection(5);
     const seen = [];
-    hub.tasks.add(async (ctx) => {
+    const task = hub.task.spawn(async () => {
       await hub.motor("A").run(50);
       sim.failReads = true;
       await sleep(1.0); // espera larga sin ceder al planificador de tareas
       seen.push(sim.motors[1]); // el watchdog actuó mientras tanto
-      await ctx.yieldNow();
     });
-    await hub.tasks.wait();
+    await task.join();
     try {
       expect(seen).toEqual([0]);
       expect(coreOf(hub).state).toBe(HubState.ERROR);

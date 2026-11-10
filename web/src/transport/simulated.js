@@ -23,7 +23,7 @@ const INTERNAL = [
   [K.CONN_CURRENT, K.TYPE_CURRENT], [K.CONN_VOLTAGE, K.TYPE_VOLTAGE],
   [K.CONN_PIEZO, K.TYPE_PIEZO], [K.CONN_RGB, K.TYPE_RGB],
 ];
-export const DIRECTION_CODES = Object.freeze({ neutral: 0, back: 3, right: 5, left: 7, forward: 9 });
+export const DIRECTION_CODES = Object.freeze({ none: 0, backward: 3, right: 5, left: 7, forward: 9 });
 
 export const attachEvent = (conn, typ) =>
   Uint8Array.of(conn, 0x01, 0x00, typ, 0, 0, 0, 0x10, 0, 0, 0, 0x10);

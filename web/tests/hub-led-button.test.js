@@ -1,61 +1,88 @@
 import { afterEach, describe, expect, it } from "vitest";
 import * as K from "../src/core/constants.js";
-import { Hub, HubBusyError, LED, runningTime, GREEN, RED, SimulatedTransport } from "../src/index.js";
+import { LED_COLORS, SimulatedTransport } from "../src/index.js";
+import { ConnectionFailedError, HubBusyError } from "../src/core/errors.js";
 import { FAST, makeHub, sleep, waitFor } from "./helpers.js";
 
 let hub, sim;
 afterEach(async () => { await hub?.disconnect(); hub = sim = undefined; });
-const setup = async (devices, opts) => { ({ hub, sim } = makeHub(devices, opts)); await hub.connect(); };
+const setup = async (devices, opts) => { ({ hub, sim } = makeHub(devices, opts)); hub.connect(); await hub.waitConnection(5); };
 
 describe("LED", () => {
-  it("rgb y on/off envían los comandos de modo absoluto", async () => {
+  it("color(r, g, b) envía el comando de modo absoluto", async () => {
     await setup();
-    await hub.led.rgb(0, 255, 64);
+    await hub.led.color(0, 255, 64);
     expect(sim.ledMode).toBe(K.LED_ABSOLUTE);
     expect(sim.writesTo(K.CHAR_OUTPUT_CMD).at(-1)).toEqual(Uint8Array.from([6, 4, 3, 0, 255, 64]));
-    await hub.led.on();
-    expect(sim.writesTo(K.CHAR_OUTPUT_CMD).at(-1)).toEqual(Uint8Array.from([6, 4, 3, 255, 255, 255]));
-    await hub.led.off();
   });
 
-  it("index cambia a modo discreto y vuelve a absoluto solo cuando hace falta", async () => {
+  it("color(nombre) cambia a modo discreto y vuelve a absoluto solo cuando hace falta", async () => {
     await setup();
-    await hub.led.index(LED.GREEN);
+    await hub.led.color("dark_green");
     expect(sim.ledMode).toBe(K.LED_DISCRETE);
+    expect(sim.writesTo(K.CHAR_OUTPUT_CMD).at(-1)).toEqual(Uint8Array.from([6, 4, 1, LED_COLORS.dark_green]));
     const configs = () => sim.writesTo(K.CHAR_INPUT_CMD).length;
     const n = configs();
-    await hub.led.index(4);
+    await hub.led.color("blue");
     expect(configs()).toBe(n); // sin reconfigurar
-    await hub.led.rgb(1, 2, 3);
+    await hub.led.color(1, 2, 3);
     expect(sim.ledMode).toBe(K.LED_ABSOLUTE);
-    expect([GREEN, RED, LED.RED]).toEqual([6, 9, 9]);
+  });
+
+  it("el catálogo usa los índices reales del firmware", async () => {
+    expect(LED_COLORS.dark_green).toBe(6);
+    expect(LED_COLORS.light_green).toBe(5);
+    expect(LED_COLORS.yellow).toBe(7);
+    expect(LED_COLORS.white).toBe(10);
+    expect(LED_COLORS.off).toBe(0);
   });
 
   it("valida argumentos", async () => {
     await setup();
-    expect(() => hub.led.index(11)).toThrow(RangeError);
-    expect(() => hub.led.rgb(256, 0, 0)).toThrow(RangeError);
-    expect(() => hub.led.rgb(1.5, 0, 0)).toThrow(TypeError);
-    expect(() => hub.led.rgb("1", 0, 0)).toThrow(TypeError);
+    expect(() => hub.led.color("chartreuse")).toThrow(RangeError);
+    expect(() => hub.led.color(256, 0, 0)).toThrow(RangeError);
+    expect(() => hub.led.color(1.5, 0, 0)).toThrow(TypeError);
+    expect(() => hub.led.color("1", 0, 0)).toThrow(TypeError);
+    expect(() => hub.led.color()).toThrow(TypeError);
   });
 });
 
 describe("Button", () => {
   it("refleja pulsaciones y el estado inicial leído al conectar", async () => {
     await setup();
-    expect(hub.button.isPressed).toBe(false);
-    expect(hub.button.isReleased).toBe(true);
+    expect(hub.button.read()).toBe(false);
     sim.press();
-    expect(hub.button.isPressed).toBe(true);
+    expect(hub.button.read()).toBe(true);
     sim.release();
-    expect(hub.button.isPressed).toBe(false);
+    expect(hub.button.read()).toBe(false);
+  });
+
+  it("detecta los cambios y los consume una sola vez", async () => {
+    await setup();
+    sim.press();
+    await sleep(0.05);
+    expect(hub.button.hasChange()).toBe(true);
+    expect(hub.button.hasChange()).toBe(false); // consumido
+    sim.release();
+    await sleep(0.05);
+    expect(hub.button.hasChange("released")).toBe(true);
+    expect(hub.button.hasChange("pressed")).toBe(false);
+  });
+
+  it("espera un cambio y devuelve su tipo", async () => {
+    await setup();
+    const pending = hub.button.waitChange("pressed");
+    await sleep(0.05);
+    sim.press();
+    await expect(pending).resolves.toBe("pressed");
   });
 
   it("lee el estado ya pulsado al conectar", async () => {
     ({ hub, sim } = makeHub());
     sim.button = true;
-    await hub.connect();
-    expect(hub.button.isPressed).toBe(true);
+    hub.connect();
+    await hub.waitConnection(5);
+    expect(hub.button.read()).toBe(true);
   });
 });
 
@@ -70,9 +97,22 @@ describe("Hub", () => {
     expect(hub.state).toBe("disconnected");
   });
 
+  it("connect() inicia y wait_connection() espera", async () => {
+    ({ hub, sim } = makeHub());
+    hub.connect();
+    expect(await hub.waitConnection(2)).toBe(true);
+    expect(hub.isConnected).toBe(true);
+  });
+
+  it("wait_connection devuelve False si se agota el tiempo", async () => {
+    ({ hub, sim } = makeHub({ A: "motor" }, { failConnect: true }));
+    hub.connect();
+    await expect(hub.waitConnection(0.2)).rejects.toBeInstanceOf(ConnectionFailedError);
+  });
+
   it("tolera eventos de puerto repetidos sin reconfigurar sensores", async () => {
     await setup({ A: "distance" }, { repeatPorts: 0.04 });
-    const d = hub.distanceSensor();
+    const d = hub.distance("A");
     sim.setDistance(3);
     expect(await d.read()).toBe(3);
     const n = sim.writesTo(K.CHAR_INPUT_CMD).length;
@@ -84,45 +124,30 @@ describe("Hub", () => {
   it("detecta conexión/retirada de dispositivos en caliente", async () => {
     await setup({ A: "motor" });
     sim.attach("B", "tilt");
-    expect(await waitFor(() => hub.ports.B === "tilt")).toBe(true);
+    expect(await waitFor(() => hub.ports().b === "tilt")).toBe(true);
     sim.detach("B");
-    expect(await waitFor(() => hub.ports.B === undefined)).toBe(true);
+    expect(await waitFor(() => hub.ports().b === undefined)).toBe(true);
   });
 
   it("refreshPorts vuelve a descubrir los dispositivos", async () => {
     await setup({ A: "motor", B: "distance" });
-    expect(await hub.refreshPorts()).toEqual({ A: "motor", B: "distance" });
+    expect(await hub.refreshPorts()).toEqual({ a: "motor", b: "distance" });
   });
 
   it("falla con claridad si no hay hub", async () => {
     ({ hub, sim } = makeHub(undefined, { failConnect: true }));
-    await expect(hub.connect()).rejects.toThrow(/no WeDo 2.0 hub/);
-    expect(hub.state).toBe("error"); // igual que _abort_connect en el núcleo Cython
-    await hub.disconnect(); // limpia y vuelve a "disconnected"
+    hub.connect();
+    await expect(hub.waitConnection(1)).rejects.toBeInstanceOf(ConnectionFailedError);
+    expect(hub.state).toBe("error");
+    await hub.disconnect();
     expect(hub.state).toBe("disconnected");
   });
 
   it("no admite conectar dos veces a la vez", async () => {
     ({ hub, sim } = makeHub());
-    const first = hub.connect();
-    await expect(hub.connect()).rejects.toBeInstanceOf(HubBusyError);
-    await first;
-  });
-
-  it("Hub.use garantiza la desconexión y la parada de motores", async () => {
-    const transport = new SimulatedTransport({ A: "motor" }, { externalDelay: 0.03 });
-    await expect(Hub.use(async (h) => {
-      await h.motor("A").run(80);
-      throw new Error("boom");
-    }, { transport, timing: FAST })).rejects.toThrow("boom");
-    expect(transport.motors[1]).toBe(0);
-    expect(transport.connected).toBe(false);
-  });
-
-  it("runningTime devuelve milisegundos crecientes", async () => {
-    const a = runningTime();
-    await sleep(0.02);
-    expect(runningTime()).toBeGreaterThanOrEqual(a + 15);
+    hub.connect();
+    hub.connect(); // la segunda llamada no hace nada
+    expect(await hub.waitConnection(2)).toBe(true);
   });
 
   it("shutdown apaga el hub y exige reconectar", async () => {

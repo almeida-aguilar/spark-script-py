@@ -6,6 +6,13 @@ import { describe, expect, it } from "vitest";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const $ = (s) => document.querySelector(s);
 
+/** Espera a que el texto del elemento sea `text` (los eventos llegan en ticks distintos). */
+async function waitText(sel, text, timeoutMs = 5000) {
+  const end = Date.now() + timeoutMs;
+  while (Date.now() < end && $(sel).textContent !== text) await sleep(50);
+  return $(sel).textContent;
+}
+
 describe("interfaz + simulador", () => {
   it("arranca, conecta al simulador y refleja puertos, batería y sensores", async () => {
     const html = readFileSync("index.html", "utf8");
@@ -19,18 +26,16 @@ describe("interfaz + simulador", () => {
     expect($("#transport").value).toBe("simulated");
 
     $("#btn-connect").click();
-    for (let i = 0; i < 40 && $("#state").textContent !== "conectado"; i += 1) await sleep(100);
-    expect($("#state").textContent).toBe("conectado");
-    expect($("#hub-name").textContent).toBe("Hub simulado");
-    expect($("#battery").textContent).toBe("87 %");
-    expect($("#port-A").textContent).toBe("motor");
-    expect($("#port-B").textContent).toBe("distance");
+    expect(await waitText("#state", "conectado")).toBe("conectado");
+    expect(await waitText("#hub-name", "Hub simulado")).toBe("Hub simulado");
+    expect(await waitText("#battery", "87 %")).toBe("87 %");
+    expect(await waitText("#port-A", "motor")).toBe("motor");
+    expect(await waitText("#port-B", "distance")).toBe("distance");
     expect($("#card-sim").hidden).toBe(false);
     expect($("#btn-disconnect").disabled).toBe(false);
 
     window.wedopyApp.sim.setDistance(6);
-    await sleep(700);
-    expect($("#dist").textContent).toBe("6");
+    expect(await waitText("#dist", "6")).toBe("6");
 
     $("#led-presets button:nth-child(6)").click();
     document.querySelector('.motor[data-port="A"] .primary').click();
@@ -40,7 +45,7 @@ describe("interfaz + simulador", () => {
     $("#btn-disconnect").click();
     await sleep(300);
     expect($("#state").textContent).toBe("sin conexión");
-    expect($("#py-code").value).toContain("from wedopy import Hub"); // editor montado con el programa inicial
+    expect($("#py-code").value).toContain("from wedo import Hub"); // editor montado con el programa inicial
     expect($("#py-export").disabled).toBe(false); // exportación de proyecto disponible
     expect(errors).toEqual([]);
   }, 15000);

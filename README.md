@@ -9,10 +9,10 @@ micro:bit (tema **Dracula**) que ejecuta tus programas sobre el hub real o simul
 
 ## Qué incluye
 
-- **Módulos**: motores, LED, botón y sensores (`tilt`, `distance`) con la misma API que la
-  biblioteca `wedopy` de escritorio: `hub.motor("A").run(50)`, `hub.led.index(6)`, …
-- **Tareas cooperativas**: `hub.tasks.add(async (ctx) => { … })` con `ctx.sleep`, orden
-  determinista y una sola hebra; `hub.tasks.wait()` espera a que terminen todas.
+- **Módulos**: motores, LED, botón y sensores (`tilt`, `distance`) con la misma API que el
+  paquete Python `wedo` v0.2.0: `hub.motor("A").run(50)`, `hub.led.color("dark_green")`, …
+- **Tareas cooperativas**: `hub.task.spawn(async (ctx) => { … })` con `ctx.wait`, una sola hebra;
+  `task.join()` espera a que termine una tarea y «⏹ Detener» interrumpe todas.
 - **Seguridad**: watchdog, parada de emergencia, tiempo esperable y estado de máquina en el
   core (`docs/web-seguridad.md`); al terminar un programa no se dejan motores girando.
 - **Editor de Python**: resaltado propio con paleta Dracula, ejecución de un script a la vez
@@ -26,34 +26,32 @@ micro:bit (tema **Dracula**) que ejecuta tus programas sobre el hub real o simul
 
 ## El editor de Python, por dentro
 
-Los programas se escriben con la biblioteca Python (`from wedopy import Hub`) y corren sobre
+Los programas se escriben con el paquete Python `wedo` (`from wedo import Hub`) y corren sobre
 **Pyodide** (CPython 3.14 compilado a WASM) dentro de la propia página:
 
-- El puente `wedopy._bridge` usa la integración **JSPI** (`pyodide.ffi.run_sync`) para que el
-  código escrito de forma síncrona (`time.sleep`, `m.run(…)` con retardo) no congele la página.
-- «Detener» no mata hilos: levanta una bandera en el `runtime` JS; los `sleep`
-  despiertan antes de tiempo y la siguiente llamada al puente lanza
-  `KeyboardInterrupt`, de modo que los `finally` del programa se ejecutan igual.
-- Los mismos ficheros `.py` del proyecto sirven tanto para la biblioteca de escritorio
-  como para el editor (`web/src/python/wedopy/`).
+- El puente `wedo._bridge` usa la integración **JSPI** (`pyodide.ffi.run_sync`) para que el
+  código escrito de forma síncrona (`hub.task.wait`, `m.run(…)` con retardo) no congele la página.
+- «Detener» no mata hilos: las esperas se resuelven con un marcador de interrupción y el paquete
+  lanza `TaskCancelled`/`KeyboardInterrupt` dentro de la tarea, de modo que los `finally` del
+  programa se ejecutan igual.
+- La conexión del hub es del panel de la aplicación, no del programa: `with Hub()` detiene
+  motores y tareas al salir, pero no desconecta (eso lo hace «Desconectar» del panel).
 
 ```python
-from wedopy import Hub, task
+from wedo import Hub
 
-hub = Hub()
+with Hub() as hub:
+    def mover():
+        m = hub.motor("A")
+        try:
+            m.run(40)
+            for _ in range(4):
+                hub.task.wait(0.5)
+        finally:
+            m.stop()
+            print("limpieza")
 
-def mover():
-    m = hub.motor("A")
-    try:
-        m.run(40)
-        for _ in range(10):
-            yield task.sleep(0.5)
-    finally:
-        m.stop()
-        print("limpieza")
-
-hub.tasks.add(mover)
-hub.tasks.wait()
+    hub.task.spawn(mover)
 ```
 
 ## Desarrollo
@@ -81,11 +79,11 @@ con `scripts/copy-pyodide.mjs`, así que no hay pasos extra a mano.
 web/
   index.html            # página del editor + panel de conexión
   src/
-    api/                # Hub y dispositivos (motor, led, button, sensors, tasks, session, time)
+    api/                # Hub y dispositivos (motor, led, button, sensors, tasks, session)
     core/               # protocolo, coordinador, watchdog, state-machine, timing (reconect/Ctrl+C)
     transport/          # web-bluetooth (BLE) y simulated (simulador local)
     ui/                 # editor, highlight, consola, dashboard, tema, conexión, simulador, proyecto
-    python/             # runtime Pyodide (runtime.js) + paquete Python wedopy/*.py
+    python/             # runtime Pyodide (runtime.js) + paquete Python wedo/*.py
   tests/                # vitest: protocolo, estado, tareas, sensores, BLE, UI, editor Python
   scripts/              # copy-pyodide.mjs
 docs/                   # documentación de usuario (Jekyll → se publica en /wedopy-web/docs/)
@@ -99,7 +97,7 @@ de la app:
 
 - [Introducción](docs/index.md) · [Instalación](docs/instalacion.md) · [Guía rápida](docs/guia-rapida.md)
 - [Hardware WeDo 2.0](docs/hardware.md) · [Ejemplos prácticos](docs/ejemplos.md)
-- [Referencia de la API](docs/api/index.md) — hub, motores, sensores, periféricos, tareas, excepciones, tiempo
+- [Referencia de la API](docs/api/index.md) — hub, motores, sensores, periféricos, tareas, excepciones
 - [Arquitectura y seguridad](docs/arquitectura.md) · [Solución de problemas](docs/solucion-problemas.md)
 
 **Desarrollo** — en [`dev-docs/`](dev-docs/), solo en el repositorio:

@@ -1,54 +1,68 @@
-// Built-in LED (equivalent to src/wedopy/led.py). Indexed colours (0..10) and RGB are
-// different hub modes; the coordinator keeps track of which one is active.
+// LED integrado del hub (API v0.2.0): `hub.led`.
+//
+//   hub.led.color("light_green")   # color predefinido por nombre
+//   hub.led.color(255, 0, 0)       # color absoluto (canales 0..255, enteros)
+//
+// Los colores predefinidos son los once nombres de la paleta del dispositivo (los índices
+// internos son un detalle del firmware, comprobado en hardware: el 5 es el verde claro y
+// el 6 el verde oscuro/puro). No hay alias: un nombre desconocido es un error. La paleta
+// la determina el dispositivo, así que color("red") no tiene por qué coincidir con
+// color(255, 0, 0).
+export const LED_COLORS = Object.freeze({
+  off: 0,
+  pink: 1,
+  purple: 2,
+  blue: 3,
+  light_blue: 4,
+  light_green: 5,
+  dark_green: 6,
+  yellow: 7,
+  orange: 8,
+  red: 9,
+  white: 10,
+});
 
-// Indexed colours of the Smart Hub LED (discrete mode), as the firmware really maps them
-// (checked on hardware): 0 off, 1 pink, 2 purple, 3 blue, 4 cyan/light blue, 5 light green,
-// 6 green, 7 yellow, 8 orange, 9 red, 10 white.
-// Note that index 5 is the light green and 6 the pure green, so from 5 on everything is
-// shifted by one compared with the table in LEGO's documentation (which omits the light
-// green and adds a grey the firmware does not have).
-export const OFF = 0, BLACK = 0,
-  PINK = 1, ROSE = 1,
-  PURPLE = 2, VIOLET = 2,
-  BLUE = 3,
-  CYAN = 4, LIGHT_BLUE = 4, SKY_BLUE = 4,
-  LIGHT_GREEN = 5, TEAL = 5,
-  GREEN = 6, DARK_GREEN = 6,
-  YELLOW = 7,
-  ORANGE = 8,
-  RED = 9,
-  WHITE = 10, BRIGHT_WHITE = 10;
+const COLOR_LIST = Object.keys(LED_COLORS).join(", ");
 
-const COLORS = {
-  OFF, BLACK, PINK, ROSE, PURPLE, VIOLET, BLUE, CYAN, LIGHT_BLUE, SKY_BLUE, LIGHT_GREEN, TEAL,
-  GREEN, DARK_GREEN, YELLOW, ORANGE, RED, WHITE, BRIGHT_WHITE,
-};
-
-function byte(name, value, hi) {
+function checkChannel(name, value, port = null) {
+  const label = `led${port ? ` (puerto "${port}")` : ""}`;
   if (typeof value !== "number" || !Number.isInteger(value)) {
-    throw new TypeError(`${name} must be an integer, not ${typeof value}`);
+    throw new TypeError(`${label}: color esperaba un entero y recibió ${typeof value}`);
   }
-  if (value < 0 || value > hi) throw new RangeError(`${name} must be in 0..${hi}, got ${value}`);
+  if (value < 0 || value > 255) {
+    throw new RangeError(`${label}: el valor ${value} está fuera del rango 0..255`);
+  }
   return value;
 }
 
 export class LED {
   constructor(session) { this._session = session; }
 
-  /** Blanco. */
-  on() { return this.rgb(255, 255, 255); }
-  off() { return this.rgb(0, 0, 0); }
-
-  index(index) {
-    return this._session.core.ledIndex(byte("index", index, 10));
+  /** Color predefinido por nombre ("light_green"…) o color absoluto (r, g, b). */
+  color(nameOrRed, green, blue) {
+    this._session.requireUsable();
+    if (nameOrRed === undefined || nameOrRed === null) {
+      throw new TypeError("led: color esperaba un nombre o tres canales RGB");
+    }
+    if (typeof nameOrRed === "string") {
+      if (green !== undefined || blue !== undefined) {
+        throw new TypeError("led: color admite un nombre o tres canales RGB, no ambos");
+      }
+      const index = LED_COLORS[nameOrRed.toLowerCase()];
+      if (index === undefined) {
+        throw new RangeError(`led: color "${nameOrRed}" no válido (colores válidos: ${COLOR_LIST})`);
+      }
+      return this._session.core.ledIndex(index);
+    }
+    if (green === undefined || blue === undefined) {
+      throw new TypeError("led: color esperaba un nombre o tres canales RGB");
+    }
+    return this._session.core.ledRgb(
+      checkChannel("red", nameOrRed),
+      checkChannel("green", green),
+      checkChannel("blue", blue),
+    );
   }
 
-  rgb(red, green, blue) {
-    return this._session.core.ledRgb(byte("red", red, 255), byte("green", green, 255), byte("blue", blue, 255));
-  }
+  toString() { return "LED()"; }
 }
-
-// Constantes de color también como propiedades estáticas (LED.RED, LED.GREEN, ...).
-// La API es en inglés (igual que la biblioteca Python); las etiquetas de la UI van en español.
-Object.assign(LED, COLORS);
-export const LED_COLORS = Object.freeze({ ...COLORS });

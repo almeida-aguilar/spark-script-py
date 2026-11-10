@@ -91,7 +91,7 @@ export function bindConnection(app) {
     if (type === "battery") els.battery.textContent = `${d.percent} %`;
     if (type === "hubname") els.name.textContent = d.name;
     if (type === "ports") {
-      for (const p of ["A", "B"]) $(`#port-${p}`).textContent = d.ports[p] ?? "—";
+      for (const p of ["A", "B"]) $(`#port-${p}`).textContent = d.ports[p.toLowerCase()] ?? "—";
     }
   });
   render();

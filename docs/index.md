@@ -1,28 +1,28 @@
 ---
 layout: default
-title: Introducción a wedopy
-description: Biblioteca Python para el LEGO WeDo 2.0 Smart Hub sobre Bluetooth Low Energy (BLE)
+title: Introducción a wedo
+description: Paquete Python para el LEGO WeDo 2.0 Smart Hub sobre Bluetooth Low Energy (BLE)
 next:
   title: Instalación
   url: /instalacion.html
 ---
 
-# wedopy
+# wedo
 
-**`wedopy`** es una biblioteca moderna en Python para controlar el **LEGO® WeDo 2.0 Smart Hub** a través de Bluetooth Low Energy (BLE). Diseñada para educación, robótica y prototipado, combina una API de alto nivel intuitiva en Python con un núcleo de ejecución de bajo nivel ultra fiable implementado en **Cython**.
+**`wedo`** es un paquete moderno en Python para controlar el **LEGO® WeDo 2.0 Smart Hub** a través de Bluetooth Low Energy (BLE). Diseñado para educación, robótica y prototipado, combina una API de alto nivel intuitiva en Python con un núcleo de ejecución de bajo nivel fiable.
 
 ```python
-from wedopy import Hub, task
+from wedo import Hub
 
 with Hub() as hub:
     # Encender el LED en color azul
-    hub.led.index(3)
+    hub.led.color("blue")
 
     # Girar el motor conectado al puerto A
     motor = hub.motor("A")
     motor.run(75)
 
-    print("Dispositivos conectados:", hub.ports)
+    print("Dispositivos conectados:", hub.ports())
 ```
 
 > **Esta misma API funciona en el navegador.** La [app web de wedopy]({{ site.web_app_url }})
@@ -34,29 +34,28 @@ with Hub() as hub:
 ## 🚀 Características principales
 
 - **API Pythonic y sencilla**: Diseñada para ser legible, accesible y didáctica, respetando las mejores prácticas de Python (`with Hub() as hub:`).
-- **Seguridad industrial y watchdog**:
-  - **Single-Writer Coordinator**: Todas las operaciones BLE se ejecutan en un único hilo secuencial y determinista, garantizando respuestas con acuse de recibo (*with response*).
-  - **Heartbeat & Watchdog**: Si los motores están encendidos, se envía un latido (*heartbeat*) cada 0.5 s. Si la comunicación se corta durante más de 2 s, el *watchdog* ejecuta una parada de emergencia en un hilo independiente.
-- **Tareas cooperativas integradas**: Concurrencia ligera educativa con generadores (`hub.tasks.add()`, `yield task.sleep(segundos)`), sin lidiar con bloqueos de hilos ni la complejidad sintáctica de `asyncio`.
+- **Selección explícita de puertos**: cada recurso se obtiene por puerto (`hub.motor("A")`, `hub.distance("B")`), sin autodetección implícita: queda claro qué periférico recibe cada orden.
+- **Seguridad garantizada por el runtime**: al salir del bloque `with` o al desconectar, se detienen todos los motores. Además, un *watchdog* interno ejecuta una parada de emergencia si la comunicación se corta con motores en marcha.
+- **Tareas cooperativas integradas**: concurrencia ligera educativa con `hub.task.spawn()` y `hub.task.wait()`, sin lidiar con bloqueos de hilos ni con la complejidad sintáctica de `asyncio`.
 - **Validado en hardware real**: Probado y calibrado con el Smart Hub WeDo 2.0 real y sus sensores:
-  - **Motores**: Control de potencia (-100 a +100) y grupos coordinados (`MotorGroup`).
-  - **Sensor de inclinación (Tilt)**: Modos Dirección (`neutral`, `back`, `right`, `left`, `forward`) y Ángulo 2D `(x, y)` calibrados.
-  - **Sensor de distancia**: Lectura normalizada (0 a 10) y métodos `is_near()` e `is_far()`.
-  - **LED RGB**: Modos indexados (0 a 10) y color verdadero RGB 24-bit.
-  - **Botón integrado**: Detección reactiva de pulsación y liberación.
+  - **Motores**: control de velocidad (-100 a +100), con parada `stop()` y redondeo del valor.
+  - **Sensor de inclinación (Tilt)**: direcciones (`left`, `right`, `forward`, `backward`, `none`) y ejes `(x, y)` en grados.
+  - **Sensor de distancia**: lectura normalizada (0 a 10) y cambios (`"increase"`, `"decrease"`).
+  - **LED**: once colores predefinidos por nombre y color verdadero RGB 24-bit.
+  - **Botón integrado**: lectura de estado y cambios (`"pressed"`, `"released"`).
 
 ---
 
 ## 🏛️ Estructura de dos niveles
 
-La arquitectura de `wedopy` separa estrictamente las responsabilidades:
+La arquitectura separa estrictamente las responsabilidades:
 
 | Componente | Lenguaje | Responsabilidad |
 | :--- | :--- | :--- |
-| **API Pública** (`src/wedopy/`) | Python | `Hub`, `Motor`, `DistanceSensor`, `TiltSensor`, `LED`, `Button`, `tasks`, excepciones y context managers. |
-| **Núcleo Interno** (`wedopy_core/`) | Cython (`_wedopy`) | Codecs del protocolo WeDo 2.0, coordinador de cola única BLE, watchdog, máquina de estados y backend `Bleak`. |
+| **API Pública** (`wedo/`) | Python | `Hub`, motor, sensores, LED, botón, tareas, excepciones y gestores de contexto. |
+| **Núcleo Interno** | JS/Cython | Codecs del protocolo WeDo 2.0, coordinador de cola única BLE, watchdog, máquina de estados y transportes (`Web Bluetooth`, `Bleak`, simulador). |
 
-El usuario final simplemente instala e importa `wedopy` como cualquier paquete estándar de Python, sin requerir conocimientos de Cython ni manipular extensiones nativas.
+El usuario final simplemente importa `wedo` como cualquier paquete estándar de Python, sin requerir conocimientos del núcleo interno.
 
 ---
 
@@ -65,31 +64,27 @@ El usuario final simplemente instala e importa `wedopy` como cualquier paquete e
 Permite coordinar múltiples acciones a la vez de forma limpia:
 
 ```python
-from wedopy import Hub, task
+from wedo import Hub
 
 with Hub() as hub:
     def parpadear():
-        while True:
-            hub.led.index(7)       # Amarillo
-            yield task.sleep(0.3)
-            hub.led.index(9)       # Rojo
-            yield task.sleep(0.3)
+        for _ in range(10):
+            hub.led.color("yellow")
+            hub.task.wait(0.3)
+            hub.led.color("red")
+            hub.task.wait(0.3)
 
     def mover():
         motor = hub.motor("A")
         try:
             motor.run(80)
-            yield task.sleep(2.0)
+            hub.task.wait(2.0)
         finally:
             motor.stop()
 
-    # Añadir tarea de fondo (se cancela al terminar las normales)
-    hub.tasks.add(parpadear, background=True)
-    # Añadir tarea principal
-    hub.tasks.add(mover)
-
-    # Ejecutar hasta que la tarea principal termine
-    hub.tasks.wait()
+    hub.task.spawn(parpadear)
+    hub.task.spawn(mover)
+    # Al salir del bloque se espera a que terminen todas las tareas.
 ```
 
 ---
@@ -100,6 +95,6 @@ with Hub() as hub:
 2. [**Guía de Inicio Rápido**](guia-rapida.md): Tu primer script en 5 minutos.
 3. [**Hardware WeDo 2.0**](hardware.md): Particularidades del firmware oficial, sensores y puertos.
 4. [**Referencia de la API**](api/index.md): Documentación exhaustiva de todas las clases y funciones.
-5. [**Arquitectura y Seguridad**](arquitectura.md): Explicación del coordinador de hilos, watchdog y protocolos.
+5. [**Arquitectura y Seguridad**](arquitectura.md): Explicación del coordinador, watchdog y protocolos.
 6. [**Ejemplos Prácticos**](ejemplos.md): Colección de scripts listos para ejecutar.
 7. [**Solución de Problemas**](solucion-problemas.md): Respuestas a errores comunes y diagnóstico.

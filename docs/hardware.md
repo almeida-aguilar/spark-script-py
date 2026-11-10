@@ -55,27 +55,29 @@ El Smart Hub se expone mediante los siguientes servicios y características GATT
 
 ## 🔍 Particularidades del Firmware (Comprobadas en Hardware)
 
-Durante la implementación y validación en hardware real de `wedopy`, se identificaron comportamientos críticos que difieren de la documentación teórica:
+Durante la implementación y validación en hardware real de `wedo`, se identificaron comportamientos críticos que difieren de la documentación teórica:
 
 ### 1. Sensor de inclinación (Tilt): No es un acelerómetro continuo
 
 El sensor de inclinación WeDo 2.0 es en realidad un **interruptor mecánico de 4 posiciones** con amortiguación, no un acelerómetro triaxial IMU.
 
 - **Modo Dirección (Modo 1)**: Configurado con `UNIT_SI`. Emite un número en coma flotante de 4 bytes (`float32`). Los valores válidos son:
-  - `0`: Neutro / horizontal (`neutral`)
-  - `3`: Inclinado hacia atrás (`back`)
+  - `0`: Horizontal (`none`)
+  - `3`: Inclinado hacia atrás (`backward`)
   - `5`: Inclinado a la derecha (`right`)
   - `7`: Inclinado a la izquierda (`left`)
   - `9`: Inclinado hacia adelante (`forward`)
 - **Modo Ángulo (Modo 0)**: **Requiere estrictamente `UNIT_RAW`** y emite un par de enteros con signo de 8 bits (`int8`, 2 bytes en total).
-  > **Advertencia de compatibilidad:** Si el software envía una solicitud de ángulo con `UNIT_SI` (como indicaba la especificación antigua de LEGO), el firmware del Hub **acepta el comando sin error pero nunca emite ninguna notificación**. `wedopy` maneja esto automáticamente solicitando `UNIT_RAW`.
+  > **Advertencia de compatibilidad:** Si el software envía una solicitud de ángulo con `UNIT_SI` (como indicaba la especificación antigua de LEGO), el firmware del Hub **acepta el comando sin error pero nunca emite ninguna notificación**. `wedo` maneja esto automáticamente solicitando `UNIT_RAW`.
 - **Modo Golpe/Bump (Modo 2)**: Aunque el firmware responde afirmativamente a la orden de configuración del modo 2, los sensores de inclinación comerciales nunca emiten notificaciones de golpe. Este modo no está implementado en el firmware físico.
 
 ### 2. Notificaciones por cambio (Delta-Only)
 
 Los sensores WeDo 2.0 funcionan en modo *notificación por cambio*:
 - Cuando un sensor está en reposo absoluto, **el firmware no envía paquetes BLE repetidos**.
-- Si invocas `sensor.read()` y no ha habido cambio físico desde la última muestra, la función devolverá el último valor almacenado en caché. Si se requiere una muestra fresca tras una reconexión, es necesario que haya movimiento físico o la operación esperará hasta el tiempo límite (*timeout*).
+- Si invocas `sensor.read()` y el sensor aún no ha informado ninguna lectura (por ejemplo, un periférico enchufado después de la conexión), la operación lanza `NoReadingError`. En cambio, si ya hay una muestra anterior y no ha habido cambio físico, se devolverá el último valor almacenado en caché.
+
+Por esa razón, la conexión se considera establecida solo cuando los sensores ya conectados han informado su primera lectura: así `read()` no falla por falta de lectura tras `with Hub()`.
 
 ### 3. Sensor de distancia
 
@@ -90,28 +92,28 @@ Los sensores WeDo 2.0 funcionan en modo *notificación por cambio*:
 
 ### 5. Paleta real del LED indexado
 
-El modo indexado (`hub.led.index(i)`, con `i` entre 0 y 10) **no** corresponde a la tabla de colores que aparece en la documentación de LEGO. Medidos en el hub real:
+El modo indexado (índices 0 a 10, accesible en la API por nombre con `hub.led.color(name)`) **no** corresponde a la tabla de colores que aparece en la documentación de LEGO. Medidos en el hub real:
 
 | Índice | Color real | | Índice | Color real |
 | :---: | :--- | --- | :---: | :--- |
-| `0` | Negro (apagado) | | `6` | Verde |
+| `0` | Negro (apagado) | | `6` | Verde (oscuro / puro) |
 | `1` | Rosa | | `7` | Amarillo |
 | `2` | Morado | | `8` | Naranja |
 | `3` | Azul | | `9` | Rojo |
-| `4` | Azul claro (cian) | | `10` | Blanco |
+| `4` | Azul claro | | `10` | Blanco |
 | `5` | Verde claro | | | |
 
 Consecuencias:
 
 - A partir del índice `5` todo va **desfasado uno**: el índice `6` es el verde (no el amarillo) y el `10` es el blanco (no un «blanco tenue»).
 - **No existe un gris**: el firmware tiene 11 ranuras y dos verdes (el claro en `5` y el puro en `6`); la documentación de LEGO, en cambio, omite el verde claro y añade un gris que el hub no tiene.
-- Por eso `wedopy` expone `LIGHT_GREEN`/`TEAL` (5), `GREEN`/`DARK_GREEN` (6) y `WHITE` (10), y no un `DIM_WHITE`.
+- Por eso la API expone los nombres `light_green` (5), `dark_green` (6) y `white` (10). Los once nombres válidos son `off`, `pink`, `purple`, `blue`, `light_blue`, `light_green`, `dark_green`, `yellow`, `orange`, `red` y `white`; el índice interno es un detalle del dispositivo y no forma parte de la API.
 
 ---
 
 ## 🛡️ Hilo Coordinador y Seguridad
 
 Debido a que el chip BLE del Smart Hub no soporta operaciones de escritura concurrentes desordenadas:
-1. `wedopy` utiliza un **hilo coordinador único** (*Single-Writer Coordinator*).
+1. `wedo` utiliza un **coordinador de escritor único** (*Single-Writer Coordinator*).
 2. Todas las escrituras se realizan estrictamente **con respuesta** (*with response*), garantizando que el paquete anterior fue recibido y validado por el hub antes de emitir el siguiente.
-3. El *Watchdog* de seguridad supervisa el latido continuo de batería (Heartbeat cada 0.5 s) mientras los motores estén encendidos. Ante cualquier fallo de enlace superior a 2 segundos, se lanzan 2 intentos de parada de emergencia en un canal prioritario.
+3. El *watchdog* de seguridad supervisa el latido continuo de batería (heartbeat cada 0.5 s) mientras los motores estén encendidos. Ante cualquier fallo de enlace, ejecuta intentos de parada de emergencia por un canal prioritario.

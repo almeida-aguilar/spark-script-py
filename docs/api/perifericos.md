@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "API: Periféricos Integrados"
-description: Referencia del LED RGB y el Botón físico del Smart Hub en wedopy
+description: Referencia del LED y el botón físico del Smart Hub en el paquete wedo (v0.2.0)
 prev:
   title: Sensores
   url: /api/sensores.html
@@ -10,122 +10,107 @@ next:
   url: /api/tareas.html
 ---
 
-# Periféricos Integrados (`LED` y `Button`)
+# Periféricos Integrados (LED y botón)
 
-El LEGO WeDo 2.0 Smart Hub incorpora un LED multicolor y un botón pulsador integrados directamente en la placa principal, accesibles a través de `hub.led` y `hub.button`.
-
-```python
-from wedopy import LED, Button
-```
+El Smart Hub incorpora un LED multicolor y un botón pulsador integrados en la placa principal. No se seleccionan por puerto: se accede directamente como las propiedades `hub.led` y `hub.button`.
 
 ---
 
-## Clase `LED`
+## 💡 LED
 
-Controla el diodo emisor de luz multicolor del Hub. Permite seleccionar colores predefinidos mediante índices o colores personalizados mediante componentes RGB (rojo, verde y azul).
+Se controla mediante un único método `color()`:
 
-### Métodos
-
-#### `on()`
 ```python
-hub.led.on() -> None
+hub.led.color("light_green")   # color predefinido por nombre
+hub.led.color(255, 0, 0)       # color absoluto (canales rojo, verde y azul)
 ```
-Enciende el LED en color blanco a máxima intensidad (equivalente a `rgb(255, 255, 255)`).
 
-#### `off()`
+### `color(name)`
+Con una cadena selecciona un color predefinido de la paleta del dispositivo:
+
+| Nombre | Color | RGB aproximado |
+|---|---|---|
+| `"off"` | Apagado | `(0, 0, 0)` |
+| `"pink"` | Rosa | `(255, 105, 180)` |
+| `"purple"` | Lila / morado | `(128, 0, 128)` |
+| `"blue"` | Azul | `(0, 0, 255)` |
+| `"light_blue"` | Azul claro | `(173, 216, 230)` |
+| `"light_green"` | Verde claro | `(144, 238, 144)` |
+| `"dark_green"` | Verde oscuro | `(0, 100, 0)` |
+| `"yellow"` | Amarillo | `(255, 255, 0)` |
+| `"orange"` | Naranja | `(255, 165, 0)` |
+| `"red"` | Rojo | `(255, 0, 0)` |
+| `"white"` | Blanco | `(255, 255, 255)` |
+
+- Los nombres se escriben exactamente así (minúsculas, con guion bajo). Un nombre desconocido lanza `ValueError` con un mensaje que lista los colores válidos: `led: color "green" no válido (colores válidos: off, pink, ...)`.
+- **No existe el alias `"green"`:** hay dos verdes y elegir uno por el usuario sería ambiguo.
+- `color("off")` apaga el LED.
+- Los valores RGB de la tabla son **orientativos**. El color predefinido lo determina la paleta del dispositivo, así que `color("red")` no tiene por qué ser idéntico a `color(255, 0, 0)`.
+
+### `color(red, green, blue)`
+Con tres enteros establece los canales de 8 bits (0 a 255):
+
 ```python
-hub.led.off() -> None
+hub.led.color(0, 200, 180)   # turquesa personalizado
 ```
-Apaga el LED (equivalente a `rgb(0, 0, 0)`).
 
-#### `index(index)`
+- Un valor fuera de ese rango lanza `ValueError`; un valor que no sea un entero (incluidos `float` y `bool`) lanza `TypeError`. La API no recorta ni redondea los canales.
+- Cualquier otra cantidad de argumentos lanza `TypeError`.
+- El índice interno de la paleta (0 a 10) es un detalle del dispositivo y no forma parte de la API.
+
+---
+
+## 🔘 Botón
+
+El botón está integrado en el hub y se accede como la propiedad `hub.button`.
+
+### `read()`
 ```python
-hub.led.index(index: int) -> None
+if hub.button.read():
+    print("Botón presionado")
 ```
-Aplica uno de los colores predefinidos del LED (enteros entre `0` y `10` o mediante las constantes de color disponibles en `wedopy` o en la clase `LED`).
+Devuelve `True` si está presionado y `False` si no lo está.
 
-La tabla refleja **la paleta real del firmware**, comprobada en hardware. El índice `5` es el verde claro y el `6` el verde puro, así que a partir del `5` los índices van desplazados uno respecto a la tabla que aparece en la documentación de LEGO (esa omite el verde claro y añade un gris que el firmware no tiene).
+### `has_change(filter=None)`
+```python
+if hub.button.has_change():
+    print("El estado del botón cambió")
+```
+Admite estos filtros:
 
-| Índice | Constante | Alias | Color visual |
-| :---: | :--- | :--- | :--- |
-| `0` | `OFF` | `BLACK` | **Negro (apagado)** |
-| `1` | `PINK` | `ROSE` | **Rosa** |
-| `2` | `PURPLE` | `VIOLET` | **Morado** |
-| `3` | `BLUE` | — | **Azul** |
-| `4` | `CYAN` | `LIGHT_BLUE`, `SKY_BLUE` | **Azul claro / cian** |
-| `5` | `LIGHT_GREEN` | `TEAL` | **Verde claro** |
-| `6` | `GREEN` | `DARK_GREEN` | **Verde** |
-| `7` | `YELLOW` | — | **Amarillo** |
-| `8` | `ORANGE` | — | **Naranja** |
-| `9` | `RED` | — | **Rojo** |
-| `10` | `WHITE` | `BRIGHT_WHITE` | **Blanco** |
+| Filtro | Significado |
+|---|---|
+| `"pressed"` | El botón pasó a estar presionado |
+| `"released"` | El botón pasó a estar liberado |
+
+Como los cambios pendientes se conservan por tipo, una pulsación breve entre dos consultas no se pierde: quedan pendientes tanto `"pressed"` como `"released"`.
+
+### `wait_change(filter=None)`
+```python
+hub.button.wait_change("pressed")
+print("Se presionó el botón")
+```
+Suspende cooperativamente el flujo actual hasta que llega un cambio. Devuelve el tipo del cambio consumido (`"pressed"` o `"released"`).
+
+---
+
+## 💡 Ejemplo: avanzar hasta pulsar el botón
 
 ```python
-from wedopy import Hub, GREEN, RED, LED
+from wedo import Hub
 
 with Hub() as hub:
-    # Usando la constante directamente
-    hub.led.index(GREEN)
+    motor = hub.motor("a")
+    button = hub.button
 
-    # O a través de la clase o la instancia
-    hub.led.index(LED.RED)
-    hub.led.index(hub.led.BLUE)
-```
+    def run_until_pressed():
+        motor.run(50)
+        button.wait_change("pressed")
+        motor.stop()
+        hub.led.color("light_green")
 
-#### `rgb(red, green, blue)`
-```python
-hub.led.rgb(red: int, green: int, blue: int) -> None
-```
-Establece un color personalizado mediante canales de 8 bits (0 a 255).
+    hub.task.spawn(run_until_pressed)
 
-- **Parámetros:**
-  - `red` *(int)*: Intensidad del canal rojo (`0..255`).
-  - `green` *(int)*: Intensidad del canal verde (`0..255`).
-  - `blue` *(int)*: Intensidad del canal azul (`0..255`).
-
-```python
-# Color turquesa personalizado
-hub.led.rgb(0, 200, 180)
-```
-
----
-
-## Clase `Button`
-
-Permite consultar el estado actual del botón pulsador central del Smart Hub.
-
-### Propiedades
-
-#### `is_pressed`
-```python
-hub.button.is_pressed -> bool
-```
-Devuelve `True` si el botón físico está siendo presionado en este instante, o `False` si está libre.
-
-#### `is_released`
-```python
-hub.button.is_released -> bool
-```
-Devuelve `True` si el botón físico no está presionado (inverso de `is_pressed`).
-
----
-
-## 💡 Ejemplo interactivo: Botón de cambio de color
-
-```python
-import time
-from wedopy import Hub
-
-with Hub() as hub:
-    color = 1
-    print("Pulsa el botón central para cambiar el color del LED (Ctrl+C para salir)")
-
-    while True:
-        if hub.button.is_pressed:
-            hub.led.index(color)
-            color = (color % 10) + 1
-            # Esperar a que se libere el botón (evita rebotes)
-            while hub.button.is_pressed:
-                time.sleep(0.05)
-        time.sleep(0.05)
+    # El flujo principal puede continuar con otras actividades.
+    # Al salir del bloque, se espera a que la tarea termine.
 ```

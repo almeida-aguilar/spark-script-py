@@ -3,10 +3,11 @@
 // al lanzar uno nuevo, el anterior se interrumpe.
 import { PythonRuntime, browserLoader } from "../python/runtime.js";
 import { createPythonEditor } from "./editor.js";
-import { exportProgram, importProgram } from "./project.js";
+import { askFileName, exportProgram, importProgram, sanitizeFileName } from "./project.js";
 import { $, h } from "./components/dom.js";
 
 const STORE_KEY = "wedopy.python.program";
+const NAME_KEY = "wedopy.python.fileName";
 const FONT_KEY = "wedopy.python.fontSize";
 const EXPORT_NAME = "mi_programa.py";
 
@@ -49,27 +50,28 @@ function bindFontSize(host) {
 
 // Programa inicial (parpadeo + marcha con tareas cooperativas, como el ejemplo de la biblioteca).
 const DEFAULT_PROGRAM = `"""Blink the LED while a motor runs, using cooperative tasks (no threads, no asyncio)."""
-from wedopy import Hub, task
+from wedo import Hub
 
 with Hub() as hub:
+    motor = hub.motor("A")
+
     def blink():
-        while True:
-            hub.led.index(7)
-            yield task.sleep(0.3)
-            hub.led.index(10)
-            yield task.sleep(0.3)
+        for _ in range(10):
+            hub.led.color("yellow")
+            hub.task.wait(0.3)
+            hub.led.color("white")
+            hub.task.wait(0.3)
 
     def move():
-        motor = hub.motor("A")
         try:                      # cancelling a task never stops the motor by itself
             motor.run(75)
-            yield task.sleep(3)
+            hub.task.wait(3)
         finally:
             motor.stop()
 
-    hub.tasks.add(blink, background=True)   # does not keep wait() alive
-    hub.tasks.add(move)
-    hub.tasks.wait()                        # returns when move() ends; blink is cancelled
+    hub.task.spawn(blink)
+    hub.task.spawn(move)
+    # On leaving the block, the runtime waits for every task to finish.
 `;
 
 export function bindPython(app, { runtime } = {}) {
@@ -99,14 +101,24 @@ export function bindPython(app, { runtime } = {}) {
   editor.setValue(saved || DEFAULT_PROGRAM);
 
   // Proyecto: exportar/importar .py
-  $("#py-export").addEventListener("click", () => {
-    exportProgram(editor.getValue(), EXPORT_NAME);
-    status.textContent = `Programa exportado como ${EXPORT_NAME}`;
+  // El nombre del fichero se pregunta al exportar (y se recuerda entre sesiones y al
+  // importar otro programa, para no perder el nombre original).
+  let fileName = EXPORT_NAME;
+  try { fileName = localStorage.getItem(NAME_KEY) || EXPORT_NAME; } catch { /* sin almacenamiento */ }
+  $("#py-export").addEventListener("click", async () => {
+    const chosen = await askFileName(fileName);
+    if (!chosen) { status.textContent = "Exportación cancelada."; return; }
+    fileName = chosen;
+    try { localStorage.setItem(NAME_KEY, chosen); } catch { /* sin almacenamiento */ }
+    exportProgram(editor.getValue(), chosen);
+    status.textContent = `Programa exportado como ${chosen}`;
   });
   $("#py-import").addEventListener("click", () => {
     importProgram((text, filename) => {
       editor.setValue(text);
       save(text);
+      fileName = sanitizeFileName(filename);
+      try { localStorage.setItem(NAME_KEY, fileName); } catch { /* sin almacenamiento */ }
       status.textContent = `Importado «${filename}» — listo para ejecutar.`;
     }, (exc) => {
       status.textContent = "";
@@ -135,7 +147,7 @@ export function bindPython(app, { runtime } = {}) {
       stopBtn.disabled = true;
     });
   });
-  stopBtn.addEventListener("click", () => { rt.stop(); app.hub?.tasks?.cancel?.(); });
+  stopBtn.addEventListener("click", () => { rt.stop(); });
 
   // Ctrl/Cmd+Intro ejecuta (como el botón ▶)
   document.addEventListener("keydown", (e) => {

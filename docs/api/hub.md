@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "API: Hub"
-description: Referencia completa de la clase Hub en wedopy
+description: Referencia completa de la clase Hub en el paquete wedo (v0.2.0)
 prev:
   title: Resumen de la API
   url: /api/
@@ -12,10 +12,10 @@ next:
 
 # Clase `Hub`
 
-La clase `Hub` representa el Smart Hub físico de LEGO WeDo 2.0 y constituye el punto de entrada principal para interactuar con todos los motores, sensores y funciones del dispositivo.
+La clase `Hub` representa el dispositivo WeDo 2.0 y permite gestionar la conexión y consultar sus puertos. Crear un `Hub()` **no** establece la conexión.
 
 ```python
-from wedopy import Hub
+from wedo import Hub
 ```
 
 ---
@@ -23,19 +23,29 @@ from wedopy import Hub
 ## 🏗️ Constructor
 
 ```python
-Hub(*, transport=None, timing=None)
+Hub(*, connect_timeout: float | None = 10.0)
 ```
 
-Crea una instancia de control del Hub.
-
 - **Parámetros:**
-  - `transport` *(opcional)*: Implementación del transporte BLE. Por defecto utiliza `BleakTransport` (comunicación real por Bluetooth). Para pruebas unitarias sin hardware físico se puede proporcionar `SimulatedHub`.
-  - `timing` *(opcional)*: Instancia de `Timing` con parámetros de tiempos de espera y reintentos (usado principalmente en pruebas y entornos de alta latencia).
-- **Ejemplo:**
-  ```python
-  # Uso estándar con hardware real
-  hub = Hub()
-  ```
+  - `connect_timeout` *(float | None, por defecto `10.0`)*: tiempo máximo, en segundos, que `with Hub() as hub` espera a que se complete la conexión al entrar. Con `None` espera indefinidamente. No afecta a `connect()` ni a `wait_connection()` usados directamente.
+
+Se puede usar de dos formas equivalentes:
+
+```python
+# Como gestor de contexto (recomendado)
+with Hub() as hub:
+    hub.led.color("light_green")
+
+# De forma explícita
+hub = Hub()
+hub.connect()
+try:
+    if not hub.wait_connection(10):
+        raise SystemExit("No se pudo conectar con el hub")
+    hub.led.color("light_green")
+finally:
+    hub.disconnect()
+```
 
 ---
 
@@ -43,120 +53,103 @@ Crea una instancia de control del Hub.
 
 ### `connect()`
 ```python
-hub.connect() -> Hub
+hub.connect() -> None
 ```
-Inicia la búsqueda BLE, conecta con el primer WeDo 2.0 Smart Hub detectado, descubre sus puertos y devuelve la propia instancia de `Hub`.
+Inicia el intento de conexión con el hub y **regresa de inmediato**, sin esperar a que se complete. Para esperar el resultado se usa `wait_connection()`.
+
+- Si el hub ya está conectado o ya hay un intento en curso, no hace nada.
+- Si el intento falla o es rechazado, el fallo se informa en la siguiente llamada a `wait_connection()`, que lanza `ConnectionFailedError`. Mientras tanto, usar un recurso lanza `NotConnectedError`.
+- `disconnect()` aborta un intento en curso.
+- Un `Hub` puede volver a conectarse después de haberse desconectado.
 
 ### `disconnect()`
 ```python
 hub.disconnect() -> None
 ```
-Cancela todas las tareas cooperativas en ejecución, solicita la parada de los motores (`nobarrier`) y cierra limpiamente la conexión BLE. Es seguro llamarlo múltiples veces consecutivas.
+Cierra la conexión con el hub. Antes de cerrarla, el runtime detiene todos los motores (parada garantizada). Si el hub ya está desconectado, no hace nada.
 
-### `shutdown()`
+### `wait_connection(timeout=None)`
 ```python
-hub.shutdown() -> None
+hub.wait_connection(timeout: float | None = None) -> bool
 ```
-Envía la orden de apagado total de energía al hardware. El Smart Hub se apagará y requerirá presionar manualmente su botón físico para volver a encenderse.
+Suspende cooperativamente el flujo actual hasta que el hub esté conectado o hasta que transcurra el tiempo indicado, en segundos.
 
-### `stop_all()`
+- Devuelve `True` si el hub está conectado y `False` si el tiempo se agotó antes.
+- Si el hub ya está conectado, devuelve `True` de inmediato.
+- `wait_connection(0)` no espera: comprueba el estado actual y devuelve `True` o `False`.
+- Sin argumento (`None`), espera indefinidamente.
+- El argumento, si se indica, debe ser un número finito mayor o igual que `0`; en caso contrario lanza `ValueError` o `TypeError`.
+- No inicia la conexión: solo espera a que se produzca.
+- Si el intento iniciado con `connect()` ha fallado, lanza `ConnectionFailedError` en lugar de agotar el tiempo. El fallo se informa una sola vez.
+
+> [!IMPORTANT]
+> El hub se considera conectado cuando el enlace está establecido, los periféricos ya conectados a los puertos han sido identificados y sus sensores han informado su primera lectura. Así, cuando `wait_connection()` devuelve `True`, `hub.ports()` es fiable y `read()` no falla por falta de lectura. Un periférico que se enchufe más tarde puede lanzar `NoReadingError` hasta que informe su primer valor.
+
+---
+
+## 🔌 Consultar puertos
+
+### `ports()`
 ```python
-hub.stop_all() -> None
+hub.ports() -> dict[str, str]
 ```
-Envía una orden inmediata de parada (`run(0)`) a todos los puertos de motor conocidos.
+Devuelve un diccionario en el que las claves son los nombres de los puertos en minúsculas (`"a"`, `"b"`) y los valores son cadenas en minúsculas que identifican el tipo de periférico conectado.
 
-### `is_connected`
 ```python
-hub.is_connected -> bool
-```
-Propiedad que devuelve `True` si el Hub mantiene una conexión activa, o `False` en caso contrario.
+ports = hub.ports()
 
-### Uso con Context Manager *(Recomendado)*
+# Ejemplo de resultado:
+# {
+#     "a": "motor",
+#     "b": "distance",
+# }
+```
+
+- Un puerto vacío se omite del diccionario; `ports.get("a")` devuelve `None` y `ports["a"]` lanza `KeyError`.
+- Un periférico cuyo tipo no se reconoce se representa como `"unknown"`.
+- Solo incluye periféricos conectados a puertos; el botón y el LED, integrados en el hub, no aparecen.
+- Si el hub no está conectado, lanza `NotConnectedError`.
+
+Los tipos de periférico son `"motor"`, `"distance"` y `"tilt"`, idénticos a los nombres de los métodos selectores (`hub.motor`, `hub.distance`, `hub.tilt`).
+
+---
+
+## 🛡️ Seguridad al terminar y al perder la conexión
+
+**Garantizado.** El runtime detiene todos los motores cuando se sale del bloque `with` (con normalidad o por una excepción) y cuando se llama a `hub.disconnect()`.
+
+**Mejor esfuerzo: pérdida inesperada del enlace.** Si la conexión se pierde, la orden de parada no puede enviarse, así que la API **no puede garantizar** que los motores se detengan: depende del comportamiento del propio hub. Al detectar la pérdida, el runtime marca el hub como desconectado, termina con `NotConnectedError` las esperas en curso y hace que las operaciones posteriores lancen `NotConnectedError`. Si el hub se reconecta, el runtime **no reenvía órdenes anteriores**.
+
+---
+
+## ⚙️ Hub como gestor de contexto
+
+`Hub` implementa el protocolo de `with`:
+
 ```python
 with Hub() as hub:
-    # El hub se conecta automáticamente al entrar.
-    hub.motor("A").run(50)
-    # Al salir del bloque (incluso si ocurre una excepción),
-    # se garantiza la llamada a disconnect().
+    motor = hub.motor("A")
+    motor.run(50)
+    hub.task.wait(2)
+    motor.stop()
 ```
 
----
+**Al entrar:** llama a `connect()` y espera `connect_timeout` con `wait_connection()`. Si la conexión se completa, devuelve el propio `Hub`. Si el intento falla, es rechazado o se agota el tiempo, lanza `ConnectionFailedError` y el cuerpo del bloque no se ejecuta.
 
-## 🔌 Detección de Puertos y Dispositivos
-
-### `ports`
 ```python
-hub.ports -> dict[str, str]
+with Hub(connect_timeout=30) as hub:  # más margen para emparejar
+    hub.led.color("light_green")
 ```
-Propiedad de solo lectura que devuelve una instantánea de los dispositivos externos conectados a los puertos `"A"` y `"B"`.
 
-**Ejemplo de retorno:**
-```python
-{"A": "motor", "B": "distance"}
-```
-Valores posibles según el dispositivo: `"motor"`, `"motion"` (sensor de distancia), `"tilt"` (sensor de inclinación).
+**Al salir**, tanto si el bloque termina con normalidad como por una excepción, en este orden:
 
-### `refresh_ports()`
-```python
-hub.refresh_ports() -> dict[str, str]
-```
-Solicita al hardware del Hub un nuevo reporte del estado de los puertos y devuelve el diccionario actualizado.
+1. **Salida normal:** espera cooperativamente a que terminen todas las tareas aún en ejecución.
+2. **Salida por excepción** (incluida `KeyboardInterrupt`): cancela todas las tareas aún en ejecución y espera a que completen su limpieza.
+3. Detiene todos los motores.
+4. Desconecta el hub.
 
----
+`__exit__` **nunca suprime** la excepción que provocó la salida. Entrar con `with` en un hub ya conectado no vuelve a conectar, pero sí lo desconecta al salir.
 
-## ⚙️ Métodos para obtener Dispositivos
+Una tarea que no termina nunca mantiene bloqueada la salida normal del `with`; en ese caso se interrumpe con `KeyboardInterrupt` (Ctrl+C), que sigue la ruta de la salida por excepción.
 
-### `motor(port=None)`
-```python
-hub.motor(port=None) -> Motor
-```
-Obtiene el objeto controlador del motor.
-- **Parámetros:**
-  - `port` *(str, opcional)*: Puerto físico (`"A"` o `"B"`, sin distinción de mayúsculas/minúsculas).
-- **Comportamiento automático:**
-  - Si se omite `port` y hay exactamente un motor conectado, se detecta y devuelve automáticamente.
-  - Lanza `DeviceNotFoundError` si no hay motor conectado.
-  - Lanza `DeviceTypeError` si el dispositivo conectado en el puerto especificado no es un motor.
-  - Lanza `AmbiguousDeviceError` si se omite `port` pero hay dos motores conectados a la vez.
-
-### `motors(ports)`
-```python
-hub.motors(ports) -> MotorGroup
-```
-Crea un grupo de motores sincronizado.
-- **Parámetros:**
-  - `ports` *(secuencia)*: Tupla o lista de puertos, por ejemplo `("A", "B")`.
-
-### `distance_sensor(port=None)`
-```python
-hub.distance_sensor(port=None) -> DistanceSensor
-```
-Obtiene el sensor de distancia conectado al puerto indicado (o lo autodetecta si solo hay uno).
-
-### `tilt_sensor(port=None)`
-```python
-hub.tilt_sensor(port=None) -> TiltSensor
-```
-Obtiene el sensor de inclinación conectado al puerto indicado (o lo autodetecta si solo hay uno).
-
----
-
-## 💡 Periféricos Integrados
-
-### `led`
-```python
-hub.led -> LED
-```
-Devuelve el objeto para controlar el LED RGB integrado.
-
-### `button`
-```python
-hub.button -> Button
-```
-Devuelve el objeto para consultar el botón físico integrado.
-
-### `tasks`
-```python
-hub.tasks -> TaskManager
-```
-Devuelve el gestor de tareas cooperativas asociado a la sesión de este Hub.
+> En **wedopy Web** la conexión del hub es del panel de la aplicación, no del programa: al ejecutar un script en el editor, el hub ya está conectado y al terminar el script se detienen los motores y las tareas, pero la conexión no se cierra (quien la cierra es el botón «Desconectar» del panel).
