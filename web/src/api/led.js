@@ -1,18 +1,27 @@
-// LED integrado (equivalente a src/wedopy/led.py). Los colores indexados (0..10) y RGB son
-// modos distintos del hub; el coordinador registra cuál está activo.
+// Built-in LED (equivalent to src/wedopy/led.py). Indexed colours (0..10) and RGB are
+// different hub modes; the coordinator keeps track of which one is active.
 
-export const OFF = 0, BLACK = 0, PINK = 1, PURPLE = 2, VIOLET = 2, BLUE = 3, CYAN = 4, SKY_BLUE = 4,
-  LIGHT_BLUE = 4, GREEN = 5, YELLOW = 6, ORANGE = 7, RED = 8, WHITE = 9, BRIGHT_WHITE = 9,
-  DIM_WHITE = 10, SOFT_WHITE = 10;
-
-// Alias en español
-export const APAGADO = OFF, ROSA = PINK, MORADO = PURPLE, AZUL = BLUE, CIAN = CYAN, CELESTE = SKY_BLUE,
-  VERDE = GREEN, AMARILLO = YELLOW, NARANJA = ORANGE, ROJO = RED, BLANCO = WHITE, BLANCO_TENUE = DIM_WHITE;
+// Indexed colours of the Smart Hub LED (discrete mode), as the firmware really maps them
+// (checked on hardware): 0 off, 1 pink, 2 purple, 3 blue, 4 cyan/light blue, 5 light green,
+// 6 green, 7 yellow, 8 orange, 9 red, 10 white.
+// Note that index 5 is the light green and 6 the pure green, so from 5 on everything is
+// shifted by one compared with the table in LEGO's documentation (which omits the light
+// green and adds a grey the firmware does not have).
+export const OFF = 0, BLACK = 0,
+  PINK = 1, ROSE = 1,
+  PURPLE = 2, VIOLET = 2,
+  BLUE = 3,
+  CYAN = 4, LIGHT_BLUE = 4, SKY_BLUE = 4,
+  LIGHT_GREEN = 5, TEAL = 5,
+  GREEN = 6, DARK_GREEN = 6,
+  YELLOW = 7,
+  ORANGE = 8,
+  RED = 9,
+  WHITE = 10, BRIGHT_WHITE = 10;
 
 const COLORS = {
-  OFF, BLACK, PINK, PURPLE, VIOLET, BLUE, CYAN, SKY_BLUE, LIGHT_BLUE, GREEN, YELLOW, ORANGE, RED, WHITE,
-  BRIGHT_WHITE, DIM_WHITE, SOFT_WHITE, APAGADO, ROSA, MORADO, AZUL, CIAN, CELESTE, VERDE, AMARILLO,
-  NARANJA, ROJO, BLANCO, BLANCO_TENUE,
+  OFF, BLACK, PINK, ROSE, PURPLE, VIOLET, BLUE, CYAN, LIGHT_BLUE, SKY_BLUE, LIGHT_GREEN, TEAL,
+  GREEN, DARK_GREEN, YELLOW, ORANGE, RED, WHITE, BRIGHT_WHITE,
 };
 
 function byte(name, value, hi) {
@@ -39,6 +48,7 @@ export class LED {
   }
 }
 
-// Constantes de color también como propiedades estáticas (LED.RED, LED.ROJO, ...).
+// Constantes de color también como propiedades estáticas (LED.RED, LED.GREEN, ...).
+// La API es en inglés (igual que la biblioteca Python); las etiquetas de la UI van en español.
 Object.assign(LED, COLORS);
 export const LED_COLORS = Object.freeze({ ...COLORS });

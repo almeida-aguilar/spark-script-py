@@ -22,7 +22,7 @@ await Hub.use(async (hub) => {
 Tareas cooperativas:
 
 ```javascript
-hub.tasks.add(async (ctx) => { for (;;) { await hub.led.index(5); await ctx.sleep(0.4); await hub.led.off(); await ctx.sleep(0.4); } }, { background: true });
+hub.tasks.add(async (ctx) => { for (;;) { await hub.led.index(6); await ctx.sleep(0.4); await hub.led.off(); await ctx.sleep(0.4); } }, { background: true });
 hub.tasks.add(async (ctx) => { await hub.motor("A").run(40); await ctx.sleep(2); await hub.motor("A").stop(); });
 await hub.tasks.wait();
 ```

@@ -92,7 +92,7 @@ with Hub() as hub:
     time.sleep(1)
 
     print("Color verde...")
-    hub.led.index(5)      # 5 = Verde
+    hub.led.index(6)      # 6 = Verde
     time.sleep(1)
 
     # Color RGB personalizado (Naranja brillante)
@@ -165,9 +165,9 @@ with Hub() as hub:
     for _ in range(20):
         if hub.button.is_pressed:
             print("¡Botón presionado!")
-            hub.led.index(8) # Rojo
+            hub.led.index(9) # Rojo
         else:
-            hub.led.index(5) # Verde
+            hub.led.index(6) # Verde
         time.sleep(0.2)
 ```
 

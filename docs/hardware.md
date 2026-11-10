@@ -88,6 +88,25 @@ Los sensores WeDo 2.0 funcionan en modo *notificación por cambio*:
 - El Smart Hub implementa una parada tipo *coast/float* sin freno activo (*brake/barrier*). Cuando se ordena `motor.stop()`, el motor deja de recibir energía y desacelera libremente.
 - Los acuses de recibo (ACK) confirman la recepción y procesamiento de la orden en el microcontrolador, pero no que el eje mecánico se haya detenido por completo.
 
+### 5. Paleta real del LED indexado
+
+El modo indexado (`hub.led.index(i)`, con `i` entre 0 y 10) **no** corresponde a la tabla de colores que aparece en la documentación de LEGO. Medidos en el hub real:
+
+| Índice | Color real | | Índice | Color real |
+| :---: | :--- | --- | :---: | :--- |
+| `0` | Negro (apagado) | | `6` | Verde |
+| `1` | Rosa | | `7` | Amarillo |
+| `2` | Morado | | `8` | Naranja |
+| `3` | Azul | | `9` | Rojo |
+| `4` | Azul claro (cian) | | `10` | Blanco |
+| `5` | Verde claro | | | |
+
+Consecuencias:
+
+- A partir del índice `5` todo va **desfasado uno**: el índice `6` es el verde (no el amarillo) y el `10` es el blanco (no un «blanco tenue»).
+- **No existe un gris**: el firmware tiene 11 ranuras y dos verdes (el claro en `5` y el puro en `6`); la documentación de LEGO, en cambio, omite el verde claro y añade un gris que el hub no tiene.
+- Por eso `wedopy` expone `LIGHT_GREEN`/`TEAL` (5), `GREEN`/`DARK_GREEN` (6) y `WHITE` (10), y no un `DIM_WHITE`.
+
 ---
 
 ## 🛡️ Hilo Coordinador y Seguridad

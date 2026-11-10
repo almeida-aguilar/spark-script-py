@@ -24,10 +24,8 @@ from .exceptions import (
 from .hub import Hub
 from .led import (
     LED,
-    OFF, BLACK, PINK, PURPLE, VIOLET, BLUE, CYAN, SKY_BLUE, LIGHT_BLUE,
-    GREEN, YELLOW, ORANGE, RED, WHITE, BRIGHT_WHITE, DIM_WHITE, SOFT_WHITE,
-    APAGADO, ROSA, MORADO, AZUL, CIAN, CELESTE, VERDE, AMARILLO, NARANJA, ROJO,
-    BLANCO, BLANCO_TENUE,
+    OFF, BLACK, PINK, ROSE, PURPLE, VIOLET, BLUE, CYAN, LIGHT_BLUE, SKY_BLUE,
+    LIGHT_GREEN, TEAL, GREEN, DARK_GREEN, YELLOW, ORANGE, RED, WHITE, BRIGHT_WHITE,
 )
 from .motor import Motor, MotorGroup
 from .sensors import DistanceSensor, TiltSensor
@@ -38,10 +36,8 @@ __version__ = "0.1.2"
 __all__ = [
     "Hub", "Motor", "MotorGroup", "DistanceSensor", "TiltSensor", "LED", "Button",
     "task", "running_time",
-    "OFF", "BLACK", "PINK", "PURPLE", "VIOLET", "BLUE", "CYAN", "SKY_BLUE", "LIGHT_BLUE",
-    "GREEN", "YELLOW", "ORANGE", "RED", "WHITE", "BRIGHT_WHITE", "DIM_WHITE", "SOFT_WHITE",
-    "APAGADO", "ROSA", "MORADO", "AZUL", "CIAN", "CELESTE", "VERDE", "AMARILLO", "NARANJA", "ROJO",
-    "BLANCO", "BLANCO_TENUE",
+    "OFF", "BLACK", "PINK", "ROSE", "PURPLE", "VIOLET", "BLUE", "CYAN", "LIGHT_BLUE", "SKY_BLUE",
+    "LIGHT_GREEN", "TEAL", "GREEN", "DARK_GREEN", "YELLOW", "ORANGE", "RED", "WHITE", "BRIGHT_WHITE",
     "WedoError", "BLEError", "HubConnectionError", "HubDisconnectedError", "OperationTimeout",
     "HubBusyError", "DeviceNotFoundError", "DeviceTypeError", "AmbiguousDeviceError",
     "InvalidStateError", "UnsupportedFeatureError",

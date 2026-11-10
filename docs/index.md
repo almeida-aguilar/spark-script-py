@@ -70,9 +70,9 @@ from wedopy import Hub, task
 with Hub() as hub:
     def parpadear():
         while True:
-            hub.led.index(6)       # Amarillo
+            hub.led.index(7)       # Amarillo
             yield task.sleep(0.3)
-            hub.led.index(8)       # Rojo
+            hub.led.index(9)       # Rojo
             yield task.sleep(0.3)
 
     def mover():

@@ -1,11 +1,11 @@
-"""Puente síncrono entre la API Python de wedopy y la API JavaScript de wedopy Web.
+"""Synchronous bridge between the wedopy Python API and the wedopy Web JavaScript API.
 
-Funciona con Pyodide + JSPI (Chrome >= 137): ``run_sync`` bloquea el programa Python hasta que
-la promesa de JavaScript se resuelve, sin congelar la página. Así los programas escritos para
-la biblioteca Python (``hub.motor("A").run(100)``, ``yield task.sleep(1)``) funcionan sin cambios.
+Works with Pyodide + JSPI (Chrome >= 137): ``run_sync`` blocks the Python program until the
+JavaScript promise settles, without freezing the page. So programs written for the Python
+library (``hub.motor("A").run(100)``, ``yield task.sleep(1)``) work unchanged.
 
-El botón «Detener» del editor activa una bandera: la siguiente llamada del programa al hub o
-a ``sleep`` lanza ``KeyboardInterrupt`` (igual que Ctrl+C en la biblioteca original).
+The editor's Stop button raises a flag: the next call to the hub or to ``sleep`` raises
+``KeyboardInterrupt`` (just like Ctrl+C in the original library).
 """
 import js
 from pyodide.ffi import JsException, run_sync
@@ -28,7 +28,7 @@ def check_stop():
 
 
 def convert(exc):
-    """JsException -> excepción Python equivalente (misma jerarquía que la biblioteca)."""
+    """JsException -> equivalent Python exception (same hierarchy as the library)."""
     err = exc.js_error
     name, message = str(err.name), str(err.message)
     cls = _JS_ERRORS.get(name)
@@ -42,7 +42,7 @@ def convert(exc):
 
 
 def call(fn, *args):
-    """Llamada JavaScript síncrona (puede lanzar)."""
+    """Synchronous JavaScript call (may raise)."""
     check_stop()
     try:
         return fn(*args)
@@ -59,12 +59,12 @@ def get(obj, name):
 
 
 def wait(awaitable):
-    """Bloquea hasta que una promesa de JavaScript se resuelva; devuelve su valor.
+    """Blocks until a JavaScript promise settles; returns its value.
 
-    «Detener» no rechaza nada: si la promesa despertó antes de tiempo porque el usuario
-    pulsó «Detener», la bandera sigue levantada y check_stop() la convierte aquí en
-    KeyboardInterrupt, en puro Python (sin cruzar la frontera JSPI: lanzar excepciones
-    a través de run_sync deja continuaciones huérfanas en Pyodide).
+    Stop rejects nothing: if the promise woke up early because the user pressed Stop, the
+    flag is still raised and check_stop() turns it into a KeyboardInterrupt here, in plain
+    Python (without crossing the JSPI boundary: raising exceptions through run_sync leaves
+    orphaned continuations in Pyodide).
     """
     check_stop()
     try:
@@ -76,7 +76,7 @@ def wait(awaitable):
 
 
 def sleep(seconds):
-    """Sustituto cooperativo de ``time.sleep``: cede el control a la página y admite «Detener»."""
+    """Cooperative replacement for ``time.sleep``: yields control to the page and supports Stop."""
     if isinstance(seconds, bool) or not isinstance(seconds, (int, float)):
         raise TypeError("seconds must be a number, not %s" % type(seconds).__name__)
     if seconds != seconds or seconds < 0:

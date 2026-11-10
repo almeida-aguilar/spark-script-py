@@ -1,4 +1,4 @@
-"""Botón integrado (misma API que wedopy.button)."""
+"""Built-in button (same API as wedopy.button)."""
 from . import _bridge
 
 

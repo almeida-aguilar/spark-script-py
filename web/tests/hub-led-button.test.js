@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import * as K from "../src/core/constants.js";
-import { Hub, HubBusyError, LED, runningTime, GREEN, ROJO, SimulatedTransport } from "../src/index.js";
+import { Hub, HubBusyError, LED, runningTime, GREEN, RED, SimulatedTransport } from "../src/index.js";
 import { FAST, makeHub, sleep, waitFor } from "./helpers.js";
 
 let hub, sim;
@@ -28,7 +28,7 @@ describe("LED", () => {
     expect(configs()).toBe(n); // sin reconfigurar
     await hub.led.rgb(1, 2, 3);
     expect(sim.ledMode).toBe(K.LED_ABSOLUTE);
-    expect([GREEN, ROJO, LED.ROJO]).toEqual([5, 8, 8]);
+    expect([GREEN, RED, LED.RED]).toEqual([6, 9, 9]);
   });
 
   it("valida argumentos", async () => {

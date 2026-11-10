@@ -29,9 +29,9 @@ from wedopy import Hub, task
 with Hub() as hub:
     def blink():
         while True:
-            hub.led.index(6)   # Amarillo
+            hub.led.index(7)   # Amarillo
             yield task.sleep(0.3)
-            hub.led.index(9)   # Blanco
+            hub.led.index(10)  # Blanco
             yield task.sleep(0.3)
 
     def move():

@@ -1,4 +1,4 @@
-"""Sensores de distancia e inclinación (misma API que wedopy.sensors)."""
+"""Distance and tilt sensors (same API as wedopy.sensors)."""
 import math
 
 from . import _bridge

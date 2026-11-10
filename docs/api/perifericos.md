@@ -42,21 +42,23 @@ Apaga el LED (equivalente a `rgb(0, 0, 0)`).
 ```python
 hub.led.index(index: int) -> None
 ```
-Aplica uno de los colores predefinidos de la paleta oficial de WeDo 2.0 (enteros entre `0` y `10` o mediante las constantes de color disponibles en `wedopy` o en la clase `LED`).
+Aplica uno de los colores predefinidos del LED (enteros entre `0` y `10` o mediante las constantes de color disponibles en `wedopy` o en la clase `LED`).
 
-| Índice | Constante | Alias / Alias ES | Color visual |
+La tabla refleja **la paleta real del firmware**, comprobada en hardware. El índice `5` es el verde claro y el `6` el verde puro, así que a partir del `5` los índices van desplazados uno respecto a la tabla que aparece en la documentación de LEGO (esa omite el verde claro y añade un gris que el firmware no tiene).
+
+| Índice | Constante | Alias | Color visual |
 | :---: | :--- | :--- | :--- |
-| `0` | `OFF` | `BLACK`, `APAGADO` | **Apagado** |
-| `1` | `PINK` | `ROSA` | **Rosa** |
-| `2` | `PURPLE` | `VIOLET`, `MORADO` | **Morado** |
-| `3` | `BLUE` | `AZUL` | **Azul** |
-| `4` | `CYAN` | `SKY_BLUE`, `LIGHT_BLUE`, `CIAN`, `CELESTE` | **Celeste / Cian** |
-| `5` | `GREEN` | `VERDE` | **Verde** |
-| `6` | `YELLOW` | `AMARILLO` | **Amarillo** |
-| `7` | `ORANGE` | `NARANJA` | **Naranja** |
-| `8` | `RED` | `ROJO` | **Rojo** |
-| `9` | `WHITE` | `BRIGHT_WHITE`, `BLANCO` | **Blanco brillante** |
-| `10` | `DIM_WHITE` | `SOFT_WHITE`, `BLANCO_TENUE` | **Blanco tenue** |
+| `0` | `OFF` | `BLACK` | **Negro (apagado)** |
+| `1` | `PINK` | `ROSE` | **Rosa** |
+| `2` | `PURPLE` | `VIOLET` | **Morado** |
+| `3` | `BLUE` | — | **Azul** |
+| `4` | `CYAN` | `LIGHT_BLUE`, `SKY_BLUE` | **Azul claro / cian** |
+| `5` | `LIGHT_GREEN` | `TEAL` | **Verde claro** |
+| `6` | `GREEN` | `DARK_GREEN` | **Verde** |
+| `7` | `YELLOW` | — | **Amarillo** |
+| `8` | `ORANGE` | — | **Naranja** |
+| `9` | `RED` | — | **Rojo** |
+| `10` | `WHITE` | `BRIGHT_WHITE` | **Blanco** |
 
 ```python
 from wedopy import Hub, GREEN, RED, LED

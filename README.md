@@ -10,7 +10,7 @@ micro:bit (tema **Dracula**) que ejecuta tus programas sobre el hub real o simul
 ## Qué incluye
 
 - **Módulos**: motores, LED, botón y sensores (`tilt`, `distance`) con la misma API que la
-  biblioteca `wedopy` de escritorio: `hub.motor("A").run(50)`, `hub.led.index(5)`, …
+  biblioteca `wedopy` de escritorio: `hub.motor("A").run(50)`, `hub.led.index(6)`, …
 - **Tareas cooperativas**: `hub.tasks.add(async (ctx) => { … })` con `ctx.sleep`, orden
   determinista y una sola hebra; `hub.tasks.wait()` espera a que terminen todas.
 - **Seguridad**: watchdog, parada de emergencia, tiempo esperable y estado de máquina en el

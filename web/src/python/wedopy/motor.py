@@ -1,4 +1,4 @@
-"""Motores (misma API que wedopy.motor)."""
+"""Motors (same API as wedopy.motor)."""
 from . import _bridge
 
 

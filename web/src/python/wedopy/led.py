@@ -1,70 +1,54 @@
-"""LED integrado (misma API y constantes que wedopy.led; llama a la API JavaScript)."""
+"""Built-in LED (same API and constants as wedopy.led; calls the JavaScript API)."""
 from . import _bridge
 
-# Colour index constants (discrete mode 0..10)
+# Colour index constants (discrete mode 0..10).
+# Indexed colours of the Smart Hub LED, as the firmware really maps them (checked on
+# hardware): 0 off, 1 pink, 2 purple, 3 blue, 4 cyan/light blue, 5 light green, 6 green,
+# 7 yellow, 8 orange, 9 red, 10 white.
+# Note that index 5 is the light green and 6 the pure green, so from 5 on everything is
+# shifted by one compared with the table in LEGO's documentation (which omits the light
+# green and adds a grey the firmware does not have).
 OFF = 0
 BLACK = 0
 PINK = 1
+ROSE = 1
 PURPLE = 2
 VIOLET = 2
 BLUE = 3
 CYAN = 4
-SKY_BLUE = 4
 LIGHT_BLUE = 4
-GREEN = 5
-YELLOW = 6
-ORANGE = 7
-RED = 8
-WHITE = 9
-BRIGHT_WHITE = 9
-DIM_WHITE = 10
-SOFT_WHITE = 10
-
-# Spanish aliases
-APAGADO = OFF
-ROSA = PINK
-MORADO = PURPLE
-AZUL = BLUE
-CIAN = CYAN
-CELESTE = SKY_BLUE
-VERDE = GREEN
-AMARILLO = YELLOW
-NARANJA = ORANGE
-ROJO = RED
-BLANCO = WHITE
-BLANCO_TENUE = DIM_WHITE
+SKY_BLUE = 4
+LIGHT_GREEN = 5
+TEAL = 5
+GREEN = 6
+DARK_GREEN = 6
+YELLOW = 7
+ORANGE = 8
+RED = 9
+WHITE = 10
+BRIGHT_WHITE = 10
 
 __all__ = [
     "LED",
     "OFF",
     "BLACK",
     "PINK",
+    "ROSE",
     "PURPLE",
     "VIOLET",
     "BLUE",
     "CYAN",
-    "SKY_BLUE",
     "LIGHT_BLUE",
+    "SKY_BLUE",
+    "LIGHT_GREEN",
+    "TEAL",
     "GREEN",
+    "DARK_GREEN",
     "YELLOW",
     "ORANGE",
     "RED",
     "WHITE",
     "BRIGHT_WHITE",
-    "DIM_WHITE",
-    "SOFT_WHITE",
-    "APAGADO",
-    "ROSA",
-    "MORADO",
-    "AZUL",
-    "CIAN",
-    "CELESTE",
-    "VERDE",
-    "AMARILLO",
-    "NARANJA",
-    "ROJO",
-    "BLANCO",
-    "BLANCO_TENUE",
 ]
 
 
@@ -82,34 +66,22 @@ class LED:
     OFF = OFF
     BLACK = BLACK
     PINK = PINK
+    ROSE = ROSE
     PURPLE = PURPLE
     VIOLET = VIOLET
     BLUE = BLUE
     CYAN = CYAN
-    SKY_BLUE = SKY_BLUE
     LIGHT_BLUE = LIGHT_BLUE
+    SKY_BLUE = SKY_BLUE
+    LIGHT_GREEN = LIGHT_GREEN
+    TEAL = TEAL
     GREEN = GREEN
+    DARK_GREEN = DARK_GREEN
     YELLOW = YELLOW
     ORANGE = ORANGE
     RED = RED
     WHITE = WHITE
     BRIGHT_WHITE = BRIGHT_WHITE
-    DIM_WHITE = DIM_WHITE
-    SOFT_WHITE = SOFT_WHITE
-
-    # Spanish aliases
-    APAGADO = APAGADO
-    ROSA = ROSA
-    MORADO = MORADO
-    AZUL = AZUL
-    CIAN = CIAN
-    CELESTE = CELESTE
-    VERDE = VERDE
-    AMARILLO = AMARILLO
-    NARANJA = NARANJA
-    ROJO = ROJO
-    BLANCO = BLANCO
-    BLANCO_TENUE = BLANCO_TENUE
 
     def __init__(self, js_led):
         self._js = js_led

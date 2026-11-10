@@ -1,10 +1,14 @@
 // Motores, sensores y LED. Solo presentación: toda acción pasa por `app.run`.
 import { $, h, setEnabled } from "./components/dom.js";
 
+// Colores indexados del LED según el firmware real (comprobado en hardware): el 5 es el
+// verde claro y el 6 el verde puro; desde ahí los índices van desplazados uno respecto a
+// la tabla de LEGO. Las etiquetas van en español, las constantes de la librería en inglés.
 const LED_PRESETS = [
-  ["Apagado", 0, "#222"], ["Rosa", 1, "#ff6ec7"], ["Morado", 2, "#8a2be2"], ["Azul", 3, "#1e5cff"],
-  ["Cian", 4, "#00d5e0"], ["Verde", 5, "#18c24a"], ["Amarillo", 6, "#ffd400"], ["Naranja", 7, "#ff8a00"],
-  ["Rojo", 8, "#e5251b"], ["Blanco", 9, "#ffffff"], ["Blanco tenue", 10, "#cfcfcf"],
+  ["Apagado", 0, "#1a1a1a"], ["Rosa", 1, "#ff6ec7"], ["Morado", 2, "#8a2be2"],
+  ["Azul", 3, "#1e5cff"], ["Azul claro", 4, "#00d5e0"], ["Verde claro", 5, "#00b894"],
+  ["Verde", 6, "#18c24a"], ["Amarillo", 7, "#ffd400"], ["Naranja", 8, "#ff8a00"],
+  ["Rojo", 9, "#e5251b"], ["Blanco", 10, "#ffffff"],
 ];
 
 const hexToRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));

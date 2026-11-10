@@ -1,4 +1,4 @@
-"""Excepciones públicas (idénticas a wedopy_core/exceptions.py de la biblioteca Python)."""
+"""Public exceptions (identical to wedopy_core/exceptions.py in the Python library)."""
 
 
 class WedoError(Exception):

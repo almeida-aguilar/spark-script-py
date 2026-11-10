@@ -1,12 +1,12 @@
-"""``Hub`` (misma API que wedopy.hub) sobre el hub conectado en el panel de wedopy Web.
+"""``Hub`` (same API as wedopy.hub) over the hub connected in the wedopy Web panel.
 
-Diferencias respecto a la biblioteca Python de escritorio:
+Differences with the desktop Python library:
 
-* ``Hub()`` usa el hub que ya está conectado en el panel «Conexión» (real o simulado); el
-  selector Bluetooth del navegador necesita un clic del usuario y no puede abrirse desde un programa.
-* ``disconnect()`` / salir de ``with Hub()`` cancelan las tareas y paran los motores, pero
-  mantienen el enlace para poder ejecutar otro programa sin volver a elegir el dispositivo.
-* ``time.sleep`` es cooperativo: cede el control a la página y admite el botón «Detener».
+* ``Hub()`` uses the hub already connected in the panel (real or simulated); the browser's
+  Bluetooth picker needs a user click and cannot be opened from a program.
+* ``disconnect()`` / leaving ``with Hub()`` cancel the tasks and stop the motors, but keep
+  the link open so another program can run without picking the device again.
+* ``time.sleep`` is cooperative: it yields control to the page and supports the Stop button.
 """
 from . import _bridge
 from .button import Button
@@ -44,7 +44,7 @@ class Hub:
     # -- lifecycle ------------------------------------------------------------
 
     def connect(self):
-        """Usa el hub del panel. Devuelve ``self``."""
+        """Use the hub from the panel. Returns ``self``."""
         if not self.is_connected:
             _bridge.wait(self._js.connect())  # puede fallar sin gesto de usuario: conecta desde el panel
         return self
@@ -84,7 +84,7 @@ class Hub:
         return False
 
     def _interrupted(self):
-        """Detener / Ctrl+C durante ``tasks.wait()``: intenta parar los motores."""
+        """Stop / Ctrl+C during ``tasks.wait()``: tries to stop the motors."""
         try:
             _bridge.wait(self._js.stopAll())
         except BaseException:
