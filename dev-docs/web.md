@@ -1,14 +1,14 @@
 ---
 layout: default
-title: wedopy Web
+title: wedo Web
 description: Controla el WeDo 2.0 desde el navegador con Web Bluetooth
 ---
 
-# wedopy Web
+# wedo Web
 
-Aplicación: [`/wedopy/`](../) (Chrome o Edge, HTTPS). Sin hardware, elige **Simulador**.
+Aplicación: [`/wedo/`](../) (Chrome o Edge, HTTPS). Sin hardware, elige **Simulador**.
 
-Capa JS v0.3.0 — espejo del paquete Python `wedopy`:
+Capa JS v0.3.0 — espejo del paquete Python `wedo`:
 
 ```javascript
 import { Hub } from "./src/index.js";
@@ -18,7 +18,7 @@ hub.connect();                        // inicia la conexión y regresa de inmedi
 if (await hub.waitConnection(10)) {   // `false` si se agota el tiempo
   const motor = hub.motor("A");
   await motor.run(50);                // -100..100; redondea al entero más cercano
-  await wedopy.task.wait(1);
+  await wedo.task.wait(1);
   await motor.stop();
 }
 ```
@@ -26,13 +26,13 @@ if (await hub.waitConnection(10)) {   // `false` si se agota el tiempo
 Tareas cooperativas:
 
 ```javascript
-const blink = wedopy.task.spawn(async (ctx) => {
+const blink = wedo.task.spawn(async (ctx) => {
   for (;;) {
     hub.led.color("yellow"); await ctx.wait(0.4);
     hub.led.color("white");  await ctx.wait(0.4);
   }
 });
-const move = wedopy.task.spawn(async (ctx) => {
+const move = wedo.task.spawn(async (ctx) => {
   try {
     await hub.motor("A").run(40);
     await ctx.wait(2);
@@ -61,6 +61,6 @@ fichero `.py` (botón «⬇ Exportar») y se recupera con «⬆ Importar».
 ## Desarrollo
 
 ```bash
-cd web && npm ci && npm run dev    # WEDOPY_BASE=/ para servir en la raíz
+cd web && npm ci && npm run dev    # SPARK_BASE=/ para servir en la raíz
 npm test
 ```

@@ -1,7 +1,7 @@
 // Tareas cooperativas de la API v0.3.0: `task`, del módulo (las tareas son del
 // programa y no del hub; hay un único planificador por aplicación).
 //
-//   import { task } from wedopy-web;
+//   import { task } from spark-script-py;
 //   const t = task.spawn(fn)   // fn es cualquier invocable (función JS o Python)
 //   await task.wait(1)         // suspende el flujo actual (cooperativo)
 //   t.cancel() / t.join()

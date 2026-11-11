@@ -1,4 +1,4 @@
-// Jerarquía de excepciones equivalente a wedopy_core/exceptions.py.
+// Jerarquía de excepciones equivalente a wedo_core/exceptions.py.
 // Los errores de argumentos de Python (TypeError/ValueError) se mantienen como
 // TypeError y RangeError en JavaScript.
 //

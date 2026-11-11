@@ -1,11 +1,11 @@
 // Runtime de Python (Pyodide) para el editor. Ejecuta programas escritos para el paquete
-// Python `wedopy` sobre el hub conectado en la aplicación, mediante un puente síncrono
+// Python `wedo` sobre el hub conectado en la aplicación, mediante un puente síncrono
 // (JSPI: `pyodide.ffi.run_sync`). Requiere un navegador con JSPI (Chrome/Edge >= 137).
 import { UnsupportedFeatureError } from "../core/errors.js";
 import { task } from "../api/tasks.js";
 import { key, releaseKeyboard, resetKeyboard } from "../api/keyboard.js";
 
-const PY_FILES = import.meta.glob("./wedopy/*.py", { query: "?raw", import: "default", eager: true });
+const PY_FILES = import.meta.glob("./wedo/*.py", { query: "?raw", import: "default", eager: true });
 
 // «Detener» NO rechaza ninguna promesa: los sleep despiertan antes de tiempo con una
 // resolución normal y es _bridge.wait quien, tras volver de run_sync (la frontera JSPI ya
@@ -14,7 +14,7 @@ const PY_FILES = import.meta.glob("./wedopy/*.py", { query: "?raw", import: "def
 
 const BOOTSTRAP = `
 import time
-from wedopy import _bridge
+from wedo import _bridge
 time.sleep = _bridge.sleep   # sleep cooperativo: cede a la página y admite «Detener»
 `;
 
@@ -42,7 +42,7 @@ export class PythonRuntime {
   get running() { return this._running; }
   get ready() { return this.py !== null; }
 
-  /** Carga Pyodide e instala el paquete `wedopy` (una sola vez). */
+  /** Carga Pyodide e instala el paquete `wedo` (una sola vez). */
   init(onStatus = () => {}) {
     this._loading ??= this._init(onStatus).catch((e) => { this._loading = null; throw e; });
     return this._loading;
@@ -61,13 +61,13 @@ export class PythonRuntime {
     }
     py.setStdout({ batched: (s) => this._out("stdout", s) });
     py.setStderr({ batched: (s) => this._out("stderr", s) });
-    py.FS.mkdirTree("/home/pyodide/wedopy");
+    py.FS.mkdirTree("/home/pyodide/wedo");
     for (const [path, source] of Object.entries(PY_FILES)) {
-      py.FS.writeFile(`/home/pyodide/wedopy/${path.split("/").pop()}`, source);
+      py.FS.writeFile(`/home/pyodide/wedo/${path.split("/").pop()}`, source);
     }
     // «Detener» despierta los sleep antes de tiempo (resolución normal, sin rechazar):
     // _bridge.wait detecta la bandera al volver de run_sync y lanza KeyboardInterrupt.
-    globalThis.wedopyBridge = {
+    globalThis.sparkBridge = {
       getHub: () => this._getHub() ?? undefined,
       // `task` y el teclado son del módulo (v5 §12/§10): no dependen del hub conectado.
       getTask: () => task,

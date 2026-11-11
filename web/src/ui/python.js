@@ -6,9 +6,9 @@ import { createPythonEditor } from "./editor.js";
 import { askFileName, exportProgram, importProgram, sanitizeFileName } from "./project.js";
 import { $, h } from "./components/dom.js";
 
-const STORE_KEY = "wedopy.python.program";
-const NAME_KEY = "wedopy.python.fileName";
-const FONT_KEY = "wedopy.python.fontSize";
+const STORE_KEY = "wedo.python.program";
+const NAME_KEY = "wedo.python.fileName";
+const FONT_KEY = "wedo.python.fontSize";
 const EXPORT_NAME = "mi_programa.py";
 
 // Tamaño del texto del código: el que haya pedido el usuario con «−A»/«A+» y, si no,
@@ -50,8 +50,8 @@ function bindFontSize(host) {
 
 // Programa inicial (parpadeo + marcha con tareas cooperativas, como el ejemplo de la biblioteca).
 const DEFAULT_PROGRAM = `"""Blink the LED while a motor runs, using cooperative tasks (no threads, no asyncio)."""
-import wedopy
-from wedopy import Hub
+import wedo
+from wedo import Hub
 
 with Hub() as hub:
     motor = hub.motor("A")
@@ -59,19 +59,19 @@ with Hub() as hub:
     def blink():
         for _ in range(10):
             hub.led.color("yellow")
-            wedopy.task.wait(0.3)
+            wedo.task.wait(0.3)
             hub.led.color("white")
-            wedopy.task.wait(0.3)
+            wedo.task.wait(0.3)
 
     def move():
         try:                      # cancelling a task never stops the motor by itself
             motor.run(75)
-            wedopy.task.wait(3)
+            wedo.task.wait(3)
         finally:
             motor.stop()
 
-    wedopy.task.spawn(blink)
-    wedopy.task.spawn(move)
+    wedo.task.spawn(blink)
+    wedo.task.spawn(move)
     # On leaving the block, the runtime waits for every task to finish.
 `;
 

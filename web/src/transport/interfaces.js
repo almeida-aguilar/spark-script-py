@@ -1,4 +1,4 @@
-// Contrato de transporte (equivalente a wedopy_core/transport/interfaces.py).
+// Contrato de transporte (equivalente a wedo_core/transport/interfaces.py).
 //
 //  * todo método que habla con el hub recibe un `timeout` en segundos y puede lanzar
 //    OperationTimeout / BLEError / HubDisconnectedError / HubConnectionError;

@@ -1,18 +1,18 @@
 ---
 layout: default
-title: wedopy Web — arquitectura y equivalencias
+title: wedo Web — arquitectura y equivalencias
 description: Análisis de la implementación Python, especificación del protocolo y tabla de equivalencias con la versión JavaScript
 ---
 
-# wedopy Web: arquitectura y equivalencias
+# wedo Web: arquitectura y equivalencias
 
-Análisis del paquete Python (`wedopy`, v0.3.0), del protocolo y de la tabla de equivalencias con la capa JavaScript de la aplicación.
+Análisis del paquete Python (`wedo`, v0.3.0), del protocolo y de la tabla de equivalencias con la capa JavaScript de la aplicación.
 
-## 1. Arquitectura (Python, paquete `wedopy`)
+## 1. Arquitectura (Python, paquete `wedo`)
 
 | Capa | Archivos | Responsabilidad |
 |---|---|---|
-| API pública | `wedo/*.py` | `Hub`, `Motor`, sensores (`distance`, `tilt` con ejes), `LED`, `Button`, `wedopy.task` |
+| API pública | `wedo/*.py` | `Hub`, `Motor`, sensores (`distance`, `tilt` con ejes), `LED`, `Button`, `wedo.task` |
 | Sesión | `web/src/api/session.js` | Crea el coordinador, sigue recursos por conexión y traduce errores públicos |
 | Núcleo | `web/src/core/` | Codecs, `HubState`, `Coordinator` (escritor único, cola normal + emergencia), heartbeat y watchdog |
 | Transporte | `web/src/transport/` | `WebBluetoothTransport` (BLE) y `SimulatedTransport` (simulador) |
@@ -37,7 +37,7 @@ Análisis del paquete Python (`wedopy`, v0.3.0), del protocolo y de la tabla de 
 | `*.has_change(f)` / `wait_change(f)` | `hasChange(f)` / `await waitChange(f)` | consumen cambios pendientes por recurso |
 | `hub.led.color(name)` / `color(r,g,b)` | ídem, `await` | once nombres canónicos; índice interno no expuesto |
 | `hub.button.read()` | `hub.button.read()` | síncrono |
-| `wedopy.task.spawn(fn)` / `wait(s)` | `wedopy.task.spawn(async ctx => { await ctx.wait(s) })` | `ctx.wait` lanza `TaskCancelled`; `task.join()`/`cancel()` |
+| `wedo.task.spawn(fn)` / `wait(s)` | `wedo.task.spawn(async ctx => { await ctx.wait(s) })` | `ctx.wait` lanza `TaskCancelled`; `task.join()`/`cancel()` |
 | Excepciones `WedoError` y subclases | mismas clases | `TaskCancelled` (Python `BaseException`) fuera de `WedoError` |
 | `WebBluetoothTransport` / simulador | ídem | mismo contrato |
 | Coordinador (hilo en escritorio) | cola asíncrona con dos prioridades | |
@@ -45,12 +45,12 @@ Análisis del paquete Python (`wedopy`, v0.3.0), del protocolo y de la tabla de 
 
 ## 3 bis. Editor Python (Pyodide + JSPI)
 
-`web/src/python/wedopy/` es la capa Python de la API: `_bridge.py` llama a la API JavaScript con
+`web/src/python/wedo/` es la capa Python de la API: `_bridge.py` llama a la API JavaScript con
 `pyodide.ffi.run_sync` y traduce las excepciones JS por nombre a la jerarquía Python. Las esperas
 cooperativas se resuelven con marcadores (`"ok"`/`"cancelled"`/`"stopped"`) para que «Detener» no
 rechace promesas (Pyodide deja continuaciones huérfanas al rechazar): `task.py` convierte el
 marcador en `TaskCancelled`/`KeyboardInterrupt` dentro de la propia pila de la tarea. Cada tarea
-corre en su propia pila de Python, y el paquete se sirve desde `/home/pyodide/wedopy/` en el runtime.
+corre en su propia pila de Python, y el paquete se sirve desde `/home/pyodide/wedo/` en el runtime.
 
 ## 4. Diferencias deliberadas
 

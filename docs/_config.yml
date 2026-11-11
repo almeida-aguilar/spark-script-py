@@ -1,11 +1,11 @@
-title: wedopy
+title: spark-script-py
 tagline: Editor web para controlar el LEGO WeDo 2.0 Smart Hub con Python (Web Bluetooth + simulador)
 description: Editor web para controlar el LEGO WeDo 2.0 Smart Hub desde el navegador, con programas Python (Pyodide), Web Bluetooth y simulador integrado.
-# La documentación se publica en https://almeida-aguilar.github.io/wedopy-web/docs/
-baseurl: "/wedopy-web/docs"
+# La documentación se publica en https://almeida-aguilar.github.io/spark-script-py/docs/
+baseurl: "/spark-script-py/docs"
 url: "https://almeida-aguilar.github.io"
-github_repo: "https://github.com/almeida-aguilar/wedopy-web"
-web_app_url: "https://almeida-aguilar.github.io/wedopy-web/"
+github_repo: "https://github.com/almeida-aguilar/spark-script-py"
+web_app_url: "https://almeida-aguilar.github.io/spark-script-py/"
 version: "0.3.0"
 lang: es
 

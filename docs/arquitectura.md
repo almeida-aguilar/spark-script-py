@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Arquitectura y Seguridad
-description: Diseño interno de wedopy-web, coordinador de un solo escritor, watchdog y gestión de fallos
+description: Diseño interno de spark-script-py, coordinador de un solo escritor, watchdog y gestión de fallos
 prev:
   title: Excepciones
   url: /api/excepciones.html
@@ -12,7 +12,7 @@ next:
 
 # Arquitectura y Seguridad
 
-La arquitectura de **wedopy-web** está diseñada para proporcionar una experiencia de programación sencilla y educativa sin comprometer la fiabilidad y seguridad física del hardware.
+La arquitectura de **spark-script-py** está diseñada para proporcionar una experiencia de programación sencilla y educativa sin comprometer la fiabilidad y seguridad física del hardware.
 
 ---
 
@@ -25,7 +25,7 @@ La arquitectura de **wedopy-web** está diseñada para proporcionar una experien
 └──────────────────────────┬─────────────────────────────┘
                            │
 ┌──────────────────────────▼─────────────────────────────┐
-│ 2. API de los programas (paquete wedopy, en Pyodide)   │
+│ 2. API de los programas (paquete wedo, en Pyodide)   │
 │    Hub · Motor · Sensors · LED · Button · Tasks        │
 │    Validación de tipos, rangos y context managers      │
 └──────────────────────────┬─────────────────────────────┘

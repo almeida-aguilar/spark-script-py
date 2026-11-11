@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Seguridad en el navegador
-description: Mecanismos de seguridad de wedopy Web y sus limitaciones
+description: Mecanismos de seguridad de wedo Web y sus limitaciones
 ---
 
 # Seguridad en el navegador

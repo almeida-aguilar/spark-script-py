@@ -1,16 +1,16 @@
-"""wedopy: control del LEGO WeDo 2.0 Smart Hub desde Python.
+"""wedo: control del LEGO WeDo 2.0 Smart Hub desde Python.
 
-    from wedopy import Hub
+    from wedo import Hub
 
-    import wedopy
+    import wedo
     with Hub() as hub:
         hub.led.color("light_green")
         hub.motor("A").run(50)
-        wedopy.task.wait(2)
+        wedo.task.wait(2)
         hub.motor("A").stop()
 
 La API es síncrona en apariencia: la cooperación se expresa con las esperas de
-``wedopy.task`` y las de los recursos (``wait_change``), no con corrutinas.
+``wedo.task`` y las de los recursos (``wait_change``), no con corrutinas.
 """
 from .button import Button
 from .exceptions import (

@@ -1,5 +1,5 @@
-// Codecs del protocolo WeDo 2.0. Equivalentes a los codecs de wedopy_core/_wedopy.pyx
-// y a wedopy_core/protocol/uuid.py. Los vectores de prueba proceden de tests/test_protocol.py.
+// Codecs del protocolo WeDo 2.0. Equivalentes a los codecs de wedo_core/_wedo.pyx
+// y a wedo_core/protocol/uuid.py. Los vectores de prueba proceden de tests/test_protocol.py.
 import * as K from "./constants.js";
 import { pyRound } from "./util.js";
 

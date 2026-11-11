@@ -108,14 +108,14 @@ Si dos tareas (o una tarea y el flujo principal) envían órdenes al mismo motor
 ### Control básico con detención segura
 
 ```python
-import wedopy
-from wedopy import Hub
+import wedo
+from wedo import Hub
 
 with Hub() as hub:
     motor = hub.motor("A")
     try:
         motor.run(75)
-        wedopy.task.wait(2)
+        wedo.task.wait(2)
     finally:
         motor.stop()
 ```
@@ -123,8 +123,8 @@ with Hub() as hub:
 ### Control de un robot diferencial con dos motores
 
 ```python
-import wedopy
-from wedopy import Hub
+import wedo
+from wedo import Hub
 
 with Hub() as hub:
     izq = hub.motor("A")
@@ -133,12 +133,12 @@ with Hub() as hub:
     # Avanzar recto con ambos motores
     izq.run(60)
     der.run(60)
-    wedopy.task.wait(2)
+    wedo.task.wait(2)
 
     # Girar sobre su propio eje (rotación diferencial)
     izq.run(50)
     der.run(-50)
-    wedopy.task.wait(1)
+    wedo.task.wait(1)
 
     izq.stop()
     der.stop()

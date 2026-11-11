@@ -15,7 +15,7 @@ next:
 La clase `Hub` representa el dispositivo WeDo 2.0 y permite gestionar la conexión y consultar sus puertos. Crear un `Hub()` **no** establece la conexión.
 
 ```python
-from wedopy import Hub
+from wedo import Hub
 ```
 
 ---
@@ -130,7 +130,7 @@ Los tipos de periférico son `"motor"`, `"distance"` y `"tilt"`, idénticos a lo
 with Hub() as hub:
     motor = hub.motor("A")
     motor.run(50)
-    wedopy.task.wait(2)
+    wedo.task.wait(2)
     motor.stop()
 ```
 
@@ -152,4 +152,4 @@ with Hub(connect_timeout=30) as hub:  # más margen para emparejar
 Una tarea que no termina nunca mantiene bloqueada la salida normal del `with`; en ese caso se interrumpe con `KeyboardInterrupt` (Ctrl+C), que sigue la ruta de la salida por excepción.
 
 > [!IMPORTANT]
-> En **wedopy-web** la conexión del hub es del panel de la aplicación, no del programa: al ejecutar un script en el editor, el hub ya está conectado, `with Hub()` **no desconecta** al salir (quien cierra la conexión es el botón «Desconectar» del panel) y al terminar el script se detienen los motores y se espera a las tareas.
+> En **spark-script-py** la conexión del hub es del panel de la aplicación, no del programa: al ejecutar un script en el editor, el hub ya está conectado, `with Hub()` **no desconecta** al salir (quien cierra la conexión es el botón «Desconectar» del panel) y al terminar el script se detienen los motores y se espera a las tareas.

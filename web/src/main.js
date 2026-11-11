@@ -32,4 +32,4 @@ navigator.bluetooth?.getAvailability?.()
   .then((ok) => con.log(ok ? "info" : "warn", ok ? "Adaptador Bluetooth disponible." : "El navegador no ve ningún adaptador Bluetooth (¿servicio bluetooth apagado?)."))
   .catch(() => {});
 
-window.wedopyApp = app; // depuración desde la consola del navegador
+window.wedoApp = app; // depuración desde la consola del navegador

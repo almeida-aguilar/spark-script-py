@@ -1,5 +1,5 @@
 // Parámetros de temporización. Valores en SEGUNDOS, idénticos a
-// wedopy_core/runtime/timing.py (verificados contra el original).
+// wedo_core/runtime/timing.py (verificados contra el original).
 
 export const DEFAULT_TIMING = Object.freeze({
   heartbeatInterval: 0.5, // lectura de batería mientras un motor está activo

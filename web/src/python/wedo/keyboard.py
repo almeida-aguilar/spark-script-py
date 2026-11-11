@@ -1,6 +1,6 @@
-"""Teclado (API v0.3.0): ``wedopy.key(name)`` (del módulo, v5 §10).
+"""Teclado (API v0.3.0): ``wedo.key(name)`` (del módulo, v5 §10).
 
-    space = wedopy.key("space")
+    space = wedo.key("space")
     space.read()                    -> bool (¿está presionada?)
     space.has_change("pressed")     -> bool (consume los cambios pendientes)
     space.wait_change("released")   -> str  (tipo consumido)
@@ -50,7 +50,7 @@ def _key_name(name) -> str:
 
 
 def key(name) -> Key:
-    """Selecciona una tecla: ``wedopy.key("space")``.
+    """Selecciona una tecla: ``wedo.key("space")``.
 
     No requiere crear un ``Hub`` ni que esté conectado. El conjunto de nombres es
     cerrado, así que un nombre desconocido lanza ``ValueError`` al seleccionar la tecla,

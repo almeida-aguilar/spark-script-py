@@ -1,7 +1,7 @@
 // Selector de tema (luna/sol). Cicla auto → claro → oscuro y guarda la elección en el
 // navegador. «Auto» sigue prefers-color-scheme (los estilos lo hacen con una media query);
 // los modos manuales fijan data-theme en <html>, que manda sobre la media query.
-const KEY = "wedopy.theme";
+const KEY = "wedo.theme";
 const MODES = ["auto", "light", "dark"];
 const ICONS = { auto: "🌗", light: "☀️", dark: "🌙" };
 const LABELS = { auto: "Tema del sistema (auto)", light: "Tema claro", dark: "Tema oscuro (Dracula)" };

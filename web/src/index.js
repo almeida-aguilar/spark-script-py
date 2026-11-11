@@ -1,4 +1,4 @@
-// API pública de wedopy Web. Espejo de src/wedopy/__init__.py (nombres en camelCase).
+// API pública de wedo Web. Espejo de src/wedo/__init__.py (nombres en camelCase).
 export { Hub } from "./api/hub.js";
 export { Motor } from "./api/motor.js";
 export { DistanceSensor, TiltSensor, TiltAxis } from "./api/sensors.js";

@@ -1,18 +1,18 @@
 ---
 layout: default
-title: wedopy-web
+title: spark-script-py
 description: Editor web para controlar el LEGO WeDo 2.0 Smart Hub desde el navegador, con programas Python (Web Bluetooth + simulador)
 next:
   title: Guía de Inicio Rápido
   url: /guia-rapida.html
 ---
 
-# wedopy-web
+# spark-script-py
 
-**wedopy-web** es un editor web para controlar el **LEGO® WeDo 2.0 Smart Hub** desde el navegador: conecta el hub por **Web Bluetooth** (o usa el **simulador integrado**) y programa en **Python** con una API de alto nivel, pensada para educación, robótica y prototipado. Sin instalar nada: los programas se ejecutan en la propia página con Pyodide.
+**spark-script-py** es un editor web para controlar el **LEGO® WeDo 2.0 Smart Hub** desde el navegador: conecta el hub por **Web Bluetooth** (o usa el **simulador integrado**) y programa en **Python** con una API de alto nivel, pensada para educación, robótica y prototipado. Sin instalar nada: los programas se ejecutan en la propia página con Pyodide.
 
 ```python
-from wedopy import Hub
+from wedo import Hub
 
 with Hub() as hub:
     # Encender el LED en color azul
@@ -34,8 +34,8 @@ Escribe el programa en el **panel Python** de la aplicación y ejecútalo: corre
 - **API Pythonic y sencilla**: diseñada para ser legible, accesible y didáctica, respetando las mejores prácticas de Python (`with Hub() as hub:`).
 - **Selección explícita de puertos**: cada recurso se obtiene por puerto (`hub.motor("A")`, `hub.distance("B")`), sin autodetección implícita: queda claro qué periférico recibe cada orden.
 - **Seguridad garantizada por el runtime**: al salir del bloque `with` o al desconectar, se detienen todos los motores. Además, un *watchdog* interno ejecuta una parada de emergencia si la comunicación se corta con motores en marcha.
-- **Tareas cooperativas integradas**: concurrencia ligera educativa con `wedopy.task.spawn()` y `wedopy.task.wait()`, sin lidiar con bloqueos de hilos ni con la complejidad sintáctica de `asyncio`.
-- **Teclado**: el programa reacciona a las teclas del usuario con `wedopy.key("space")`, mientras la página tiene el foco.
+- **Tareas cooperativas integradas**: concurrencia ligera educativa con `wedo.task.spawn()` y `wedo.task.wait()`, sin lidiar con bloqueos de hilos ni con la complejidad sintáctica de `asyncio`.
+- **Teclado**: el programa reacciona a las teclas del usuario con `wedo.key("space")`, mientras la página tiene el foco.
 - **Simulador integrado**: permite probar los programas sin hardware, con el mismo código.
 - **Validado con el hub real**: control de motores (-100 a +100), sensor de inclinación (direcciones y ejes en grados), sensor de distancia (0 a 10 cm), LED con once colores por nombre y RGB 24-bit, y botón integrado.
 
@@ -59,27 +59,27 @@ El programa Python solo usa la API pública; el núcleo interno no forma parte d
 Permite coordinar múltiples acciones a la vez de forma limpia:
 
 ```python
-import wedopy
-from wedopy import Hub
+import wedo
+from wedo import Hub
 
 with Hub() as hub:
     def parpadear():
         for _ in range(10):
             hub.led.color("yellow")
-            wedopy.task.wait(0.3)
+            wedo.task.wait(0.3)
             hub.led.color("red")
-            wedopy.task.wait(0.3)
+            wedo.task.wait(0.3)
 
     def mover():
         motor = hub.motor("A")
         try:
             motor.run(80)
-            wedopy.task.wait(2.0)
+            wedo.task.wait(2.0)
         finally:
             motor.stop()
 
-    wedopy.task.spawn(parpadear)
-    wedopy.task.spawn(mover)
+    wedo.task.spawn(parpadear)
+    wedo.task.spawn(mover)
     # Al salir del bloque se espera a que terminen todas las tareas.
 ```
 

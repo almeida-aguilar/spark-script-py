@@ -1,11 +1,11 @@
 """El hub Wedo (LEGO WeDo 2.0 Smart Hub) (API v0.3.0).
 
-    from wedopy import Hub
+    from wedo import Hub
 
-    import wedopy
+    import wedo
     with Hub() as hub:
         hub.motor("A").run(50)
-        wedopy.task.wait(2)
+        wedo.task.wait(2)
         hub.motor("A").stop()
 
 Crear un ``Hub`` no conecta: hay que llamar a ``connect()`` (que solo inicia el intento) y

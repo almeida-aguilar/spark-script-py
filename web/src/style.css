@@ -1,4 +1,4 @@
-/* wedopy Web — editor inspirado en micro:bit. Dos temas: Dracula (oscuro, por defecto)
+/* wedo Web — editor inspirado en micro:bit. Dos temas: Dracula (oscuro, por defecto)
    y claro, elegidos por prefers-color-scheme del navegador.
    Paleta Dracula: https://draculatheme.com/contribute */
 :root {
@@ -138,7 +138,7 @@ kbd { background: var(--elev); border: 1px solid var(--line); border-bottom-widt
 }
 .wb-brand { display: flex; align-items: center; gap: .6rem; justify-self: start; min-width: 0; }
 .wb-logo { font-size: 1.35rem; }
-h1 { font-size: 1.15rem; margin: 0; }
+h1 { font-size: 1.15rem; margin: 0; white-space: nowrap; }
 .tag { background: var(--accent); color: var(--accent-fg); padding: .05rem .45rem; border-radius: .3rem; font-size: .75rem; font-weight: 600; }
 .wb-center { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; justify-content: center; min-width: 0; }
 .wb-center select { max-width: 15rem; }

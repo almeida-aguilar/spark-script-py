@@ -1,5 +1,5 @@
 // Constantes del protocolo WeDo 2.0.
-// Fuente: wedopy_core/protocol/constants.py y uuid.py (sin modificar valores).
+// Fuente: wedo_core/protocol/constants.py y uuid.py (sin modificar valores).
 
 export const HUB_SUFFIX = "-1212-efde-1523-785feabcd123";
 export const STD_SUFFIX = "-0000-1000-8000-00805f9b34fb";
@@ -79,7 +79,7 @@ export const TYPE_NAMES = Object.freeze({
   [TYPE_GENERIC]: "generic",
 });
 
-// Características que el hub debe exponer para que wedopy funcione.
+// Características que el hub debe exponer para que wedo funcione.
 export const REQUIRED_CHARS = Object.freeze([
   CHAR_BATTERY, CHAR_PORT, CHAR_SENSOR, CHAR_INPUT_CMD, CHAR_OUTPUT_CMD,
 ]);

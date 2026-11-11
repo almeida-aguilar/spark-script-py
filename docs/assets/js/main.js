@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (themeBtn) {
     const LABEL = { auto: "Tema: automático", light: "Tema: claro", dark: "Tema: oscuro" };
     const ICON = { auto: "🌗", light: "☀️", dark: "🌙" };
-    const current = () => localStorage.getItem("wedopy.docs.theme") || "auto";
+    const current = () => localStorage.getItem("wedo.docs.theme") || "auto";
     const systemTheme = () => (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
 
     const apply = (mode) => {
@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
     themeBtn.addEventListener("click", () => {
       const order = ["auto", "light", "dark"];
       const next = order[(order.indexOf(current()) + 1) % order.length];
-      localStorage.setItem("wedopy.docs.theme", next);
+      localStorage.setItem("wedo.docs.theme", next);
       apply(next);
       refresh();
     });

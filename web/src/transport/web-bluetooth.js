@@ -143,7 +143,7 @@ export class WebBluetoothTransport extends Transport {
     return c;
   }
 
-  /** Traduce errores del navegador a la jerarquía de wedopy. */
+  /** Traduce errores del navegador a la jerarquía de wedo. */
   _map(exc) {
     if (exc instanceof WedoError) return exc;
     if (!this._device?.gatt?.connected || exc?.name === "NetworkError") {

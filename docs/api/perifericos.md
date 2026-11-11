@@ -97,8 +97,8 @@ Suspende cooperativamente el flujo actual hasta que llega un cambio. Devuelve el
 ## 💡 Ejemplo: avanzar hasta pulsar el botón
 
 ```python
-import wedopy
-from wedopy import Hub
+import wedo
+from wedo import Hub
 
 with Hub() as hub:
     motor = hub.motor("a")
@@ -110,7 +110,7 @@ with Hub() as hub:
         motor.stop()
         hub.led.color("light_green")
 
-    wedopy.task.spawn(run_until_pressed)
+    wedo.task.spawn(run_until_pressed)
 
     # El flujo principal puede continuar con otras actividades.
     # Al salir del bloque, se espera a que la tarea termine.

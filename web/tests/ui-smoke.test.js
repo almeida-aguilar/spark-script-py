@@ -34,18 +34,18 @@ describe("interfaz + simulador", () => {
     expect($("#card-sim").hidden).toBe(false);
     expect($("#btn-disconnect").disabled).toBe(false);
 
-    window.wedopyApp.sim.setDistance(6);
+    window.wedoApp.sim.setDistance(6);
     expect(await waitText("#dist", "6")).toBe("6");
 
     $("#led-presets button:nth-child(6)").click();
     document.querySelector('.motor[data-port="A"] .primary').click();
     await sleep(100);
-    expect(window.wedopyApp.sim.motors[1]).toBe(0); // slider en 0 -> run(0)
+    expect(window.wedoApp.sim.motors[1]).toBe(0); // slider en 0 -> run(0)
     $("#btn-estop").click();
     $("#btn-disconnect").click();
     await sleep(300);
     expect($("#state").textContent).toBe("sin conexión");
-    expect($("#py-code").value).toContain("from wedopy import Hub"); // editor montado con el programa inicial
+    expect($("#py-code").value).toContain("from wedo import Hub"); // editor montado con el programa inicial
     expect($("#py-export").disabled).toBe(false); // exportación de proyecto disponible
     expect(errors).toEqual([]);
   }, 15000);

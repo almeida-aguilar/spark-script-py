@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "API: Teclado"
-description: Referencia de wedopy.key(name) y la clase Key en los programas Python del editor (v0.3.0)
+description: Referencia de wedo.key(name) y la clase Key en los programas Python del editor (v0.3.0)
 prev:
   title: Periféricos Integrados
   url: /api/perifericos.html
@@ -10,15 +10,15 @@ next:
   url: /api/tareas.html
 ---
 
-# Teclado (`wedopy.key`)
+# Teclado (`wedo.key`)
 
 El teclado permite que el programa reaccione a las teclas del usuario. **No forma parte del hub físico**: no requiere crear un `Hub` ni que esté conectado, y sus recursos no aparecen en `hub.ports()`. Se obtiene del módulo, igual que las tareas:
 
 ```python
-space = wedopy.key("space")
+space = wedo.key("space")
 ```
 
-`wedopy.key(name)` devuelve el recurso asociado a esa tecla (`Key`). Como en `hub.motor("A")`, el selector no captura nada por sí mismo: devuelve un manejador, y la tecla se consulta con `read()`, `has_change()` o `wait_change()`.
+`wedo.key(name)` devuelve el recurso asociado a esa tecla (`Key`). Como en `hub.motor("A")`, el selector no captura nada por sí mismo: devuelve un manejador, y la tecla se consulta con `read()`, `has_change()` o `wait_change()`.
 
 ---
 
@@ -70,7 +70,7 @@ Las reglas son las generales de los recursos de entrada: los cambios pendientes 
 ## ⏳ Esperar un cambio
 
 ```python
-wedopy.key("space").wait_change("pressed")
+wedo.key("space").wait_change("pressed")
 print("Empezamos")
 ```
 
@@ -95,14 +95,14 @@ print("Empezamos")
 Mover un motor con las flechas hasta pulsar `q`:
 
 ```python
-import wedopy
-from wedopy import Hub
+import wedo
+from wedo import Hub
 
 with Hub() as hub:
     motor = hub.motor("A")
-    forward = wedopy.key("up")
-    backward = wedopy.key("down")
-    stop_key = wedopy.key("q")
+    forward = wedo.key("up")
+    backward = wedo.key("down")
+    stop_key = wedo.key("q")
 
     while not stop_key.has_change("pressed"):
         if forward.read():
@@ -111,12 +111,12 @@ with Hub() as hub:
             motor.run(-50)
         else:
             motor.stop()
-        wedopy.task.wait(0.05)
+        wedo.task.wait(0.05)
 ```
 
 Esperar a que el usuario pulse una tecla para empezar (sin necesidad de un `Hub`):
 
 ```python
-wedopy.key("space").wait_change("pressed")
+wedo.key("space").wait_change("pressed")
 print("Empezamos")
 ```

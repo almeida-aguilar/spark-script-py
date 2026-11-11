@@ -14,10 +14,10 @@ next:
 
 Los errores se expresan mediante excepciones nativas de Python. La API no adopta como convención general el retorno de códigos de error ni introduce un sistema paralelo.
 
-Todas las excepciones públicas pueden importarse desde el módulo `wedopy`:
+Todas las excepciones públicas pueden importarse desde el módulo `wedo`:
 
 ```python
-from wedopy import (
+from wedo import (
     WedoError,
     NotConnectedError,
     ConnectionFailedError,
@@ -74,7 +74,7 @@ Los mensajes están en español e identifican el recurso y, cuando existe, el pu
 > Los programas **no deben depender del texto exacto**: para distinguir situaciones se capturan los tipos de excepción o se usa la lógica del programa (`hub.ports()`, `hub.wait_connection()`), no el análisis de cadenas.
 
 ### `WedoError`
-Excepción base para todos los errores de la API. Si deseas capturar cualquier problema originado por `wedopy`, captura esta clase.
+Excepción base para todos los errores de la API. Si deseas capturar cualquier problema originado por `wedo`, captura esta clase.
 
 ### `NotConnectedError`
 Se lanza al usar un recurso con el hub desconectado, y también cuando la conexión se pierde durante una espera (`wait_change()` termina con ella). Es la excepción más frecuente: cubre tanto el «aún no conectado» como el «se acaba de perder el enlace».
@@ -89,7 +89,7 @@ Se produce al usar un recurso sobre un puerto donde no hay ningún periférico c
 Un sensor todavía no ha informado ninguna lectura. Suele ocurrir con un periférico enchufado después de la conexión: hasta que informe su primer valor, `read()` lanza esta excepción.
 
 ### `KeyboardUnavailableError`
-El entorno no puede entregar eventos de pulsación y liberación de teclas. Lanza al **usar** una tecla (`read()`, `has_change()`, `wait_change()`), no al seleccionarla con `wedopy.key()`. Más detalles en [Teclado](teclado.html).
+El entorno no puede entregar eventos de pulsación y liberación de teclas. Lanza al **usar** una tecla (`read()`, `has_change()`, `wait_change()`), no al seleccionarla con `wedo.key()`. Más detalles en [Teclado](teclado.html).
 
 ### `TaskCancelled`
 La cancelación de una tarea se entrega como esta excepción dentro de la tarea (en su siguiente punto cooperativo). **Deriva de `BaseException`, no de `WedoError`**, de modo que un `except Exception:` no la captura por accidente. La cancelación es persistente: tras el pedido, todo punto cooperativo posterior vuelve a lanzarla. Más detalles en [Tareas Cooperativas](tareas.html).
@@ -99,7 +99,7 @@ La cancelación de una tarea se entrega como esta excepción dentro de la tarea 
 ## 💡 Ejemplo de manejo de excepciones
 
 ```python
-from wedopy import Hub, ConnectionFailedError, PortError, NoReadingError, WedoError
+from wedo import Hub, ConnectionFailedError, PortError, NoReadingError, WedoError
 
 try:
     with Hub() as hub:
@@ -117,7 +117,7 @@ except PortError as error:
 except NoReadingError:
     print("El sensor aún no ha dado su primera lectura.")
 except WedoError as error:
-    print("Ocurrió un error en wedopy:", error)
+    print("Ocurrió un error en wedo:", error)
 ```
 
 Para evitar `PortError` se puede consultar antes qué hay en cada puerto:

@@ -1,9 +1,9 @@
 {
-  "name": "wedopy-web",
+  "name": "spark-script-py",
   "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "wedopy Web: LEGO WeDo 2.0 Smart Hub desde el navegador (Web Bluetooth)",
+  "description": "wedo Web: LEGO WeDo 2.0 Smart Hub desde el navegador (Web Bluetooth)",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

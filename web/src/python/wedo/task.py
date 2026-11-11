@@ -1,7 +1,7 @@
-"""Concurrencia cooperativa (API v0.3.0): ``wedopy.task`` (del módulo, v5 §12).
+"""Concurrencia cooperativa (API v0.3.0): ``wedo.task`` (del módulo, v5 §12).
 
-    task = wedopy.task.spawn(movement)   # movement es un invocable sin parámetros
-    wedopy.task.wait(1)                  # suspende el flujo actual
+    task = wedo.task.spawn(movement)   # movement es un invocable sin parámetros
+    wedo.task.wait(1)                  # suspende el flujo actual
     task.cancel()                      # cancelación cooperativa
     task.join()                        # espera a que termine
 
@@ -14,7 +14,7 @@ accidente: si se captura, hay que volver a lanzarla.
 
 En el navegador cada tarea corre en su propia pila de Python, de modo que varias tareas se
 alternan de verdad mientras una espera. Si una tarea falla con una excepción no capturada,
-el runtime lo informa por el registrador ``"wedopy"`` (nivel ERROR, con traceback) y no
+el runtime lo informa por el registrador ``"wedo"`` (nivel ERROR, con traceback) y no
 propaga el error a quien la creó.
 """
 import logging
@@ -23,7 +23,7 @@ import sys
 from . import _bridge
 from .exceptions import TaskCancelled
 
-_log = logging.getLogger("wedopy")
+_log = logging.getLogger("wedo")
 
 # Tareas vivas por id (para poder comprobar la cancelación).
 _tasks = {}
@@ -72,13 +72,13 @@ def _seconds(value):
     _number("espera", value)
     if value != value or value == float("inf") or value == float("-inf") or value < 0:
         raise ValueError(
-            "wedopy.task: wait esperaba un número mayor o igual que 0 y recibió %r" % (value,)
+            "wedo.task: wait esperaba un número mayor o igual que 0 y recibió %r" % (value,)
         )
     return float(value)
 
 
 class Task:
-    """Una tarea concurrente creada con ``wedopy.task.spawn``."""
+    """Una tarea concurrente creada con ``wedo.task.spawn``."""
 
     def __init__(self, manager, function) -> None:
         self._manager = manager
@@ -151,7 +151,7 @@ def _resolve_marker(marker) -> None:
 
 
 class TaskNamespace:
-    """El espacio de nombres ``wedopy.task`` (instancia única: hay un planificador
+    """El espacio de nombres ``wedo.task`` (instancia única: hay un planificador
     por proceso; las tareas son del programa y no del hub, v5 §12)."""
 
     @property
@@ -182,5 +182,5 @@ class TaskNamespace:
         _check_cancelled(task_id)
 
 
-# La instancia del módulo: ``wedopy.task``.
+# La instancia del módulo: ``wedo.task``.
 task = TaskNamespace()

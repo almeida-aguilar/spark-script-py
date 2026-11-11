@@ -71,7 +71,7 @@ puerto "a": hay un periférico "distance" y se esperaba "motor"
 Ejecuta este código para comprobar qué reconoce el hub:
 
 ```python
-from wedopy import Hub
+from wedo import Hub
 
 with Hub() as hub:
     print("Puertos detectados:", hub.ports())
@@ -107,11 +107,11 @@ with Hub() as hub:
        motor = hub.motor("A")
        try:
            motor.run(80)
-           wedopy.task.wait(2)
+           wedo.task.wait(2)
        finally:
            motor.stop()  # Se ejecuta incluso si la tarea es cancelada
    ```
-3. Recuerda que durante la limpieza (`finally`) no puedes ceder el control (`wedopy.task.wait()` lanza de nuevo `TaskCancelled`); las operaciones directas como `motor.stop()` funcionan con normalidad.
+3. Recuerda que durante la limpieza (`finally`) no puedes ceder el control (`wedo.task.wait()` lanza de nuevo `TaskCancelled`); las operaciones directas como `motor.stop()` funcionan con normalidad.
 
 ---
 
@@ -148,7 +148,7 @@ Los programas usan el módulo estándar `logging` de Python, y los mensajes apar
 
 ```python
 import logging
-from wedopy import Hub
+from wedo import Hub
 
 # Activar registro en nivel DEBUG
 logging.basicConfig(
@@ -163,5 +163,5 @@ with Hub() as hub:
 
 **Loggers disponibles:**
 
-- `wedopy`: Flujo de operaciones de alto nivel y conexión.
-- `wedopy` (nivel `ERROR`): si una tarea falla con una excepción no capturada, el runtime informa del error con su traceback en el panel de salida y no propaga la excepción a quien la creó.
+- `wedo`: Flujo de operaciones de alto nivel y conexión.
+- `wedo` (nivel `ERROR`): si una tarea falla con una excepción no capturada, el runtime informa del error con su traceback en el panel de salida y no propaga la excepción a quien la creó.

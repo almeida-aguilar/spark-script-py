@@ -1,4 +1,4 @@
-# wedopy Web
+# Spark Script Py
 
 Controla el **LEGO® WeDo 2.0 Smart Hub** desde el navegador con **Web Bluetooth**, sin instalar
 nada: una página con **simulador** integrado y un **editor de Python** al estilo del editor de
@@ -10,9 +10,9 @@ micro:bit (tema **Dracula**) que ejecuta tus programas sobre el hub real o simul
 ## Qué incluye
 
 - **Módulos**: motores, LED, botón, teclado y sensores (`tilt`, `distance`) con la API Python
-  `wedopy` que ejecuta la propia aplicación (v0.3.0): `hub.motor("A").run(50)`,
-  `hub.led.color("dark_green")`, `wedopy.key("space").read()`, …
-- **Tareas cooperativas**: `wedopy.task.spawn(async (ctx) => { … })` con `ctx.wait`, una sola hebra;
+  `wedo` que ejecuta la propia aplicación (v0.3.0): `hub.motor("A").run(50)`,
+  `hub.led.color("dark_green")`, `wedo.key("space").read()`, …
+- **Tareas cooperativas**: `wedo.task.spawn(async (ctx) => { … })` con `ctx.wait`, una sola hebra;
   `task.join()` espera a que termine una tarea y «⏹ Detener» interrumpe todas.
 - **Seguridad**: watchdog, parada de emergencia, tiempo esperable y estado de máquina en el
   core (`docs/web-seguridad.md`); al terminar un programa no se dejan motores girando.
@@ -27,11 +27,11 @@ micro:bit (tema **Dracula**) que ejecuta tus programas sobre el hub real o simul
 
 ## El editor de Python, por dentro
 
-Los programas se escriben con la API Python `wedopy` (`from wedopy import Hub`) que trae la aplicación y corren sobre
+Los programas se escriben con la API Python `wedo` (`from wedo import Hub`) que trae la aplicación y corren sobre
 **Pyodide** (CPython 3.14 compilado a WASM) dentro de la propia página:
 
-- El puente `wedopy._bridge` usa la integración **JSPI** (`pyodide.ffi.run_sync`) para que el
-  código escrito de forma síncrona (`wedopy.task.wait`, `m.run(…)` con retardo) no congele la página.
+- El puente `wedo._bridge` usa la integración **JSPI** (`pyodide.ffi.run_sync`) para que el
+  código escrito de forma síncrona (`wedo.task.wait`, `m.run(…)` con retardo) no congele la página.
 - «Detener» no mata hilos: las esperas se resuelven con un marcador de interrupción y el paquete
   lanza `TaskCancelled`/`KeyboardInterrupt` dentro de la tarea, de modo que los `finally` del
   programa se ejecutan igual.
@@ -39,8 +39,8 @@ Los programas se escriben con la API Python `wedopy` (`from wedopy import Hub`) 
   motores y tareas al salir, pero no desconecta (eso lo hace «Desconectar» del panel).
 
 ```python
-import wedopy
-from wedopy import Hub
+import wedo
+from wedo import Hub
 
 with Hub() as hub:
     def mover():
@@ -48,12 +48,12 @@ with Hub() as hub:
         try:
             m.run(40)
             for _ in range(4):
-                wedopy.task.wait(0.5)
+                wedo.task.wait(0.5)
         finally:
             m.stop()
             print("limpieza")
 
-    wedopy.task.spawn(mover)
+    wedo.task.spawn(mover)
 ```
 
 ## Desarrollo
@@ -61,7 +61,7 @@ with Hub() as hub:
 ```bash
 cd web
 npm ci
-npm run dev       # WEDOPY_BASE=/ para servir en la raíz
+npm run dev       # SPARK_BASE=/ para servir en la raíz
 ```
 
 Otros comandos:
@@ -85,10 +85,10 @@ web/
     core/               # protocolo, coordinador, watchdog, state-machine, timing (reconect/Ctrl+C)
     transport/          # web-bluetooth (BLE) y simulated (simulador local)
     ui/                 # editor, highlight, consola, dashboard, tema, conexión, simulador, proyecto
-    python/             # runtime Pyodide (runtime.js) + paquete Python wedopy/*.py
+    python/             # runtime Pyodide (runtime.js) + paquete Python wedo/*.py
   tests/                # vitest: protocolo, estado, tareas, sensores, BLE, UI, editor Python
   scripts/              # copy-pyodide.mjs
-docs/                   # documentación de usuario (Jekyll → se publica en /wedopy-web/docs/)
+docs/                   # documentación de usuario (Jekyll → se publica en /spark-script-py/docs/)
 dev-docs/               # documentación de desarrollo (no se publica)
 ```
 

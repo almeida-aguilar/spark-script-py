@@ -1,5 +1,5 @@
 // Coordinador de un solo escritor (single-writer) sobre el transporte BLE.
-// Port de la clase Coordinator de wedopy_core/_wedopy.pyx.
+// Port de la clase Coordinator de wedo_core/_wedo.pyx.
 //
 //  * toda llamada al transporte pasa por una única cola serializada;
 //  * las peticiones `emergency` (watchdog, paradas) se ejecutan antes que las normales;

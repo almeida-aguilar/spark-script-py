@@ -62,8 +62,8 @@ jobs:
         working-directory: web
 
       - name: Comprobar baseurl de Jekyll
-        # La documentación se sirve en /wedopy-web/docs/: docs/_config.yml debe reflejarlo.
-        run: grep -Eq '^baseurl:\s*"?/wedopy-web/docs"?\s*$' docs/_config.yml
+        # La documentación se sirve en /spark-script-py/docs/: docs/_config.yml debe reflejarlo.
+        run: grep -Eq '^baseurl:\s*"?/spark-script-py/docs"?\s*$' docs/_config.yml
 
       - name: Construir la documentación (Jekyll -> _site/)
         uses: actions/jekyll-build-pages@v1
@@ -85,7 +85,7 @@ jobs:
           test -f dist/pyodide/pyodide.mjs
           grep -Eq 'src="\./assets/[^"]+\.js' dist/index.html   # rutas relativas
           grep -Eq 'href="\./assets/[^"]+\.css' dist/index.html
-          ! grep -q '/wedopy/assets/' dist/index.html      # ninguna ruta absoluta heredada
+          ! grep -q '/wedo/assets/' dist/index.html      # ninguna ruta absoluta heredada
           ! grep -q 'src="/src/' dist/index.html      # sin rutas de desarrollo
 
       - uses: actions/upload-pages-artifact@v5
