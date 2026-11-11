@@ -111,4 +111,4 @@ de la app:
 
 ## Licencia
 
-MIT — el autor del proyecto añadirá el fichero `LICENSE` correspondiente.
+MIT
