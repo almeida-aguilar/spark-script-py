@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "API: Motores"
-description: Referencia de la clase Motor en el paquete wedo (v0.2.0)
+description: Referencia de la clase Motor en los programas Python del editor (v0.3.0)
 prev:
   title: Hub
   url: /api/hub.html
@@ -108,13 +108,14 @@ Si dos tareas (o una tarea y el flujo principal) envían órdenes al mismo motor
 ### Control básico con detención segura
 
 ```python
-from wedo import Hub
+import wedopy
+from wedopy import Hub
 
 with Hub() as hub:
     motor = hub.motor("A")
     try:
         motor.run(75)
-        hub.task.wait(2)
+        wedopy.task.wait(2)
     finally:
         motor.stop()
 ```
@@ -122,7 +123,8 @@ with Hub() as hub:
 ### Control de un robot diferencial con dos motores
 
 ```python
-from wedo import Hub
+import wedopy
+from wedopy import Hub
 
 with Hub() as hub:
     izq = hub.motor("A")
@@ -131,12 +133,12 @@ with Hub() as hub:
     # Avanzar recto con ambos motores
     izq.run(60)
     der.run(60)
-    hub.task.wait(2)
+    wedopy.task.wait(2)
 
     # Girar sobre su propio eje (rotación diferencial)
     izq.run(50)
     der.run(-50)
-    hub.task.wait(1)
+    wedopy.task.wait(1)
 
     izq.stop()
     der.stop()

@@ -1,12 +1,12 @@
 title: wedopy
-tagline: Control de LEGO WeDo 2.0 Smart Hub con Python y Cython
-description: Biblioteca Python de alto rendimiento para el LEGO WeDo 2.0 Smart Hub sobre Bluetooth Low Energy (BLE).
+tagline: Editor web para controlar el LEGO WeDo 2.0 Smart Hub con Python (Web Bluetooth + simulador)
+description: Editor web para controlar el LEGO WeDo 2.0 Smart Hub desde el navegador, con programas Python (Pyodide), Web Bluetooth y simulador integrado.
 # La documentación se publica en https://almeida-aguilar.github.io/wedopy-web/docs/
 baseurl: "/wedopy-web/docs"
 url: "https://almeida-aguilar.github.io"
-github_repo: "https://github.com/almeida-aguilar/wedopy"
+github_repo: "https://github.com/almeida-aguilar/wedopy-web"
 web_app_url: "https://almeida-aguilar.github.io/wedopy-web/"
-version: "0.2.0"
+version: "0.3.0"
 lang: es
 
 markdown: kramdown

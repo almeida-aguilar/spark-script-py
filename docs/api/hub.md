@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "API: Hub"
-description: Referencia completa de la clase Hub en el paquete wedo (v0.2.0)
+description: Referencia completa de la clase Hub en los programas Python del editor (v0.3.0)
 prev:
   title: Resumen de la API
   url: /api/
@@ -15,7 +15,7 @@ next:
 La clase `Hub` representa el dispositivo WeDo 2.0 y permite gestionar la conexión y consultar sus puertos. Crear un `Hub()` **no** establece la conexión.
 
 ```python
-from wedo import Hub
+from wedopy import Hub
 ```
 
 ---
@@ -130,7 +130,7 @@ Los tipos de periférico son `"motor"`, `"distance"` y `"tilt"`, idénticos a lo
 with Hub() as hub:
     motor = hub.motor("A")
     motor.run(50)
-    hub.task.wait(2)
+    wedopy.task.wait(2)
     motor.stop()
 ```
 
@@ -146,10 +146,10 @@ with Hub(connect_timeout=30) as hub:  # más margen para emparejar
 1. **Salida normal:** espera cooperativamente a que terminen todas las tareas aún en ejecución.
 2. **Salida por excepción** (incluida `KeyboardInterrupt`): cancela todas las tareas aún en ejecución y espera a que completen su limpieza.
 3. Detiene todos los motores.
-4. Desconecta el hub.
 
-`__exit__` **nunca suprime** la excepción que provocó la salida. Entrar con `with` en un hub ya conectado no vuelve a conectar, pero sí lo desconecta al salir.
+`__exit__` **nunca suprime** la excepción que provocó la salida. Entrar con `with` en un hub ya conectado no vuelve a conectar.
 
 Una tarea que no termina nunca mantiene bloqueada la salida normal del `with`; en ese caso se interrumpe con `KeyboardInterrupt` (Ctrl+C), que sigue la ruta de la salida por excepción.
 
-> En **wedopy Web** la conexión del hub es del panel de la aplicación, no del programa: al ejecutar un script en el editor, el hub ya está conectado y al terminar el script se detienen los motores y las tareas, pero la conexión no se cierra (quien la cierra es el botón «Desconectar» del panel).
+> [!IMPORTANT]
+> En **wedopy-web** la conexión del hub es del panel de la aplicación, no del programa: al ejecutar un script en el editor, el hub ya está conectado, `with Hub()` **no desconecta** al salir (quien cierra la conexión es el botón «Desconectar» del panel) y al terminar el script se detienen los motores y se espera a las tareas.

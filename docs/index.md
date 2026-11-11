@@ -1,18 +1,18 @@
 ---
 layout: default
-title: Introducción a wedo
-description: Paquete Python para el LEGO WeDo 2.0 Smart Hub sobre Bluetooth Low Energy (BLE)
+title: wedopy-web
+description: Editor web para controlar el LEGO WeDo 2.0 Smart Hub desde el navegador, con programas Python (Web Bluetooth + simulador)
 next:
-  title: Instalación
-  url: /instalacion.html
+  title: Guía de Inicio Rápido
+  url: /guia-rapida.html
 ---
 
-# wedo
+# wedopy-web
 
-**`wedo`** es un paquete moderno en Python para controlar el **LEGO® WeDo 2.0 Smart Hub** a través de Bluetooth Low Energy (BLE). Diseñado para educación, robótica y prototipado, combina una API de alto nivel intuitiva en Python con un núcleo de ejecución de bajo nivel fiable.
+**wedopy-web** es un editor web para controlar el **LEGO® WeDo 2.0 Smart Hub** desde el navegador: conecta el hub por **Web Bluetooth** (o usa el **simulador integrado**) y programa en **Python** con una API de alto nivel, pensada para educación, robótica y prototipado. Sin instalar nada: los programas se ejecutan en la propia página con Pyodide.
 
 ```python
-from wedo import Hub
+from wedopy import Hub
 
 with Hub() as hub:
     # Encender el LED en color azul
@@ -25,24 +25,19 @@ with Hub() as hub:
     print("Dispositivos conectados:", hub.ports())
 ```
 
-> **Esta misma API funciona en el navegador.** La [app web de wedopy]({{ site.web_app_url }})
-> ejecuta estos programas con Python (Pyodide) sobre el hub real por Web Bluetooth o sobre el
-> simulador integrado, sin instalar nada. Los ejemplos de esta documentación son válidos tal cual.
+Escribe el programa en el **panel Python** de la aplicación y ejecútalo: corre sobre el hub conectado desde el propio panel (real o simulado), no desde el programa.
 
 ---
 
 ## 🚀 Características principales
 
-- **API Pythonic y sencilla**: Diseñada para ser legible, accesible y didáctica, respetando las mejores prácticas de Python (`with Hub() as hub:`).
+- **API Pythonic y sencilla**: diseñada para ser legible, accesible y didáctica, respetando las mejores prácticas de Python (`with Hub() as hub:`).
 - **Selección explícita de puertos**: cada recurso se obtiene por puerto (`hub.motor("A")`, `hub.distance("B")`), sin autodetección implícita: queda claro qué periférico recibe cada orden.
 - **Seguridad garantizada por el runtime**: al salir del bloque `with` o al desconectar, se detienen todos los motores. Además, un *watchdog* interno ejecuta una parada de emergencia si la comunicación se corta con motores en marcha.
-- **Tareas cooperativas integradas**: concurrencia ligera educativa con `hub.task.spawn()` y `hub.task.wait()`, sin lidiar con bloqueos de hilos ni con la complejidad sintáctica de `asyncio`.
-- **Validado en hardware real**: Probado y calibrado con el Smart Hub WeDo 2.0 real y sus sensores:
-  - **Motores**: control de velocidad (-100 a +100), con parada `stop()` y redondeo del valor.
-  - **Sensor de inclinación (Tilt)**: direcciones (`left`, `right`, `forward`, `backward`, `none`) y ejes `(x, y)` en grados.
-  - **Sensor de distancia**: lectura normalizada (0 a 10) y cambios (`"increase"`, `"decrease"`).
-  - **LED**: once colores predefinidos por nombre y color verdadero RGB 24-bit.
-  - **Botón integrado**: lectura de estado y cambios (`"pressed"`, `"released"`).
+- **Tareas cooperativas integradas**: concurrencia ligera educativa con `wedopy.task.spawn()` y `wedopy.task.wait()`, sin lidiar con bloqueos de hilos ni con la complejidad sintáctica de `asyncio`.
+- **Teclado**: el programa reacciona a las teclas del usuario con `wedopy.key("space")`, mientras la página tiene el foco.
+- **Simulador integrado**: permite probar los programas sin hardware, con el mismo código.
+- **Validado con el hub real**: control de motores (-100 a +100), sensor de inclinación (direcciones y ejes en grados), sensor de distancia (0 a 10 cm), LED con once colores por nombre y RGB 24-bit, y botón integrado.
 
 ---
 
@@ -52,10 +47,10 @@ La arquitectura separa estrictamente las responsabilidades:
 
 | Componente | Lenguaje | Responsabilidad |
 | :--- | :--- | :--- |
-| **API Pública** (`wedo/`) | Python | `Hub`, motor, sensores, LED, botón, tareas, excepciones y gestores de contexto. |
-| **Núcleo Interno** | JS/Cython | Codecs del protocolo WeDo 2.0, coordinador de cola única BLE, watchdog, máquina de estados y transportes (`Web Bluetooth`, `Bleak`, simulador). |
+| **API de los programas** (Python, en Pyodide) | Python | `Hub`, motor, sensores, LED, botón, teclado, tareas y excepciones. |
+| **Núcleo interno** | JavaScript | Codecs del protocolo WeDo 2.0, coordinador de cola única BLE, watchdog, máquina de estados y transportes (Web Bluetooth, simulador). |
 
-El usuario final simplemente importa `wedo` como cualquier paquete estándar de Python, sin requerir conocimientos del núcleo interno.
+El programa Python solo usa la API pública; el núcleo interno no forma parte de ella.
 
 ---
 
@@ -64,26 +59,27 @@ El usuario final simplemente importa `wedo` como cualquier paquete estándar de 
 Permite coordinar múltiples acciones a la vez de forma limpia:
 
 ```python
-from wedo import Hub
+import wedopy
+from wedopy import Hub
 
 with Hub() as hub:
     def parpadear():
         for _ in range(10):
             hub.led.color("yellow")
-            hub.task.wait(0.3)
+            wedopy.task.wait(0.3)
             hub.led.color("red")
-            hub.task.wait(0.3)
+            wedopy.task.wait(0.3)
 
     def mover():
         motor = hub.motor("A")
         try:
             motor.run(80)
-            hub.task.wait(2.0)
+            wedopy.task.wait(2.0)
         finally:
             motor.stop()
 
-    hub.task.spawn(parpadear)
-    hub.task.spawn(mover)
+    wedopy.task.spawn(parpadear)
+    wedopy.task.spawn(mover)
     # Al salir del bloque se espera a que terminen todas las tareas.
 ```
 
@@ -91,10 +87,9 @@ with Hub() as hub:
 
 ## 📚 Secciones de la documentación
 
-1. [**Instalación**](instalacion.md): Requisitos del sistema, dependencias y configuración Bluetooth en Linux.
-2. [**Guía de Inicio Rápido**](guia-rapida.md): Tu primer script en 5 minutos.
-3. [**Hardware WeDo 2.0**](hardware.md): Particularidades del firmware oficial, sensores y puertos.
-4. [**Referencia de la API**](api/index.md): Documentación exhaustiva de todas las clases y funciones.
-5. [**Arquitectura y Seguridad**](arquitectura.md): Explicación del coordinador, watchdog y protocolos.
-6. [**Ejemplos Prácticos**](ejemplos.md): Colección de scripts listos para ejecutar.
-7. [**Solución de Problemas**](solucion-problemas.md): Respuestas a errores comunes y diagnóstico.
+1. [**Guía de Inicio Rápido**](guia-rapida.md): tu primer programa en 5 minutos.
+2. [**Hardware WeDo 2.0**](hardware.md): particularidades del firmware oficial, sensores y puertos.
+3. [**Referencia de la API**](api/index.md): documentación exhaustiva de todas las clases y funciones disponibles en el editor.
+4. [**Arquitectura y Seguridad**](arquitectura.md): explicación del coordinador, watchdog y protocolos.
+5. [**Ejemplos Prácticos**](ejemplos.md): colección de programas listos para ejecutar.
+6. [**Solución de Problemas**](solucion-problemas.md): respuestas a errores comunes y diagnóstico.

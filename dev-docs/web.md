@@ -8,7 +8,7 @@ description: Controla el WeDo 2.0 desde el navegador con Web Bluetooth
 
 Aplicación: [`/wedopy/`](../) (Chrome o Edge, HTTPS). Sin hardware, elige **Simulador**.
 
-Capa JS v0.2.0 — espejo del paquete Python `wedo`:
+Capa JS v0.3.0 — espejo del paquete Python `wedopy`:
 
 ```javascript
 import { Hub } from "./src/index.js";
@@ -18,7 +18,7 @@ hub.connect();                        // inicia la conexión y regresa de inmedi
 if (await hub.waitConnection(10)) {   // `false` si se agota el tiempo
   const motor = hub.motor("A");
   await motor.run(50);                // -100..100; redondea al entero más cercano
-  await hub.task.wait(1);
+  await wedopy.task.wait(1);
   await motor.stop();
 }
 ```
@@ -26,13 +26,13 @@ if (await hub.waitConnection(10)) {   // `false` si se agota el tiempo
 Tareas cooperativas:
 
 ```javascript
-const blink = hub.task.spawn(async (ctx) => {
+const blink = wedopy.task.spawn(async (ctx) => {
   for (;;) {
     hub.led.color("yellow"); await ctx.wait(0.4);
     hub.led.color("white");  await ctx.wait(0.4);
   }
 });
-const move = hub.task.spawn(async (ctx) => {
+const move = wedopy.task.spawn(async (ctx) => {
   try {
     await hub.motor("A").run(40);
     await ctx.wait(2);

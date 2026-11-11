@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Ejemplos Prácticos
-description: Scripts y ejemplos listos para ejecutar con el paquete wedo
+description: Scripts y ejemplos listos para ejecutar en el editor Python de la aplicación web
 prev:
   title: Arquitectura y Seguridad
   url: /arquitectura.html
@@ -24,7 +24,8 @@ Los archivos fuente de estos ejemplos están disponibles en el editor Python de 
 
 ```python
 """Blink the LED while a motor runs, using cooperative tasks (no threads, no asyncio)."""
-from wedo import Hub
+import wedopy
+from wedopy import Hub
 
 with Hub() as hub:
     motor = hub.motor("A")
@@ -32,19 +33,19 @@ with Hub() as hub:
     def blink():
         for _ in range(10):
             hub.led.color("yellow")
-            hub.task.wait(0.3)
+            wedopy.task.wait(0.3)
             hub.led.color("white")
-            hub.task.wait(0.3)
+            wedopy.task.wait(0.3)
 
     def move():
         try:                      # cancelar una tarea nunca detiene el motor por sí sola
             motor.run(75)
-            hub.task.wait(3)
+            wedopy.task.wait(3)
         finally:
             motor.stop()
 
-    hub.task.spawn(blink)
-    hub.task.spawn(move)
+    wedopy.task.spawn(blink)
+    wedopy.task.spawn(move)
     # Al salir del bloque se espera a que terminen las tareas.
 ```
 
@@ -56,7 +57,8 @@ with Hub() as hub:
 
 ```python
 """Drive until the distance sensor reports something nearer than 3 (scale 0..10)."""
-from wedo import Hub
+import wedopy
+from wedopy import Hub
 
 with Hub() as hub:
     sensor = hub.distance("B")
@@ -66,11 +68,11 @@ with Hub() as hub:
         try:
             motor.run(70)
             while sensor.read() > 3:
-                hub.task.wait(0.05)
+                wedopy.task.wait(0.05)
         finally:
             motor.stop()
 
-    drive_task = hub.task.spawn(drive)
+    drive_task = wedopy.task.spawn(drive)
     drive_task.join()
     hub.led.color("light_green")
 ```
@@ -83,7 +85,8 @@ with Hub() as hub:
 
 ```python
 """Drive two motors together (two explicit calls, one per motor), then stop."""
-from wedo import Hub
+import wedopy
+from wedopy import Hub
 
 with Hub() as hub:
     a = hub.motor("A")
@@ -91,7 +94,7 @@ with Hub() as hub:
 
     a.run(75)
     b.run(75)
-    hub.task.wait(2)
+    wedopy.task.wait(2)
 
     a.stop()
     b.stop()
@@ -105,14 +108,15 @@ with Hub() as hub:
 
 ```python
 """Print the tilt direction and both axes."""
-from wedo import Hub
+import wedopy
+from wedopy import Hub
 
 with Hub() as hub:
     tilt = hub.tilt("A")
 
     for _ in range(20):
         print("direction", tilt.read(), "| x", tilt.x.read(), "| y", tilt.y.read())
-        hub.task.wait(0.25)
+        wedopy.task.wait(0.25)
 ```
 
 ---
@@ -123,7 +127,8 @@ with Hub() as hub:
 
 ```python
 """Cycle through the predefined LED colours, then show an RGB colour."""
-from wedo import Hub
+import wedopy
+from wedopy import Hub
 
 COLOURS = ["pink", "purple", "blue", "light_blue", "light_green", "dark_green",
            "yellow", "orange", "red", "white"]
@@ -131,9 +136,9 @@ COLOURS = ["pink", "purple", "blue", "light_blue", "light_green", "dark_green",
 with Hub() as hub:
     for colour in COLOURS:
         hub.led.color(colour)
-        hub.task.wait(0.3)
+        wedopy.task.wait(0.3)
     hub.led.color(255, 80, 0)
-    hub.task.wait(1)
+    wedopy.task.wait(1)
 ```
 
 ---
@@ -143,7 +148,8 @@ with Hub() as hub:
 Combinación de botón, motor y una tarea vigilante que impone un plazo sin necesidad de parámetros de *timeout*:
 
 ```python
-from wedo import Hub
+import wedopy
+from wedopy import Hub
 
 with Hub() as hub:
     motor = hub.motor("A")
@@ -157,11 +163,11 @@ with Hub() as hub:
             motor.stop()
 
     def limit():
-        hub.task.wait(5)
+        wedopy.task.wait(5)
         drive_task.cancel()
 
-    drive_task = hub.task.spawn(drive)
-    limit_task = hub.task.spawn(limit)
+    drive_task = wedopy.task.spawn(drive)
+    limit_task = wedopy.task.spawn(limit)
 
     drive_task.join()
     limit_task.cancel()

@@ -1,13 +1,13 @@
 ---
 layout: default
 title: "API: Periféricos Integrados"
-description: Referencia del LED y el botón físico del Smart Hub en el paquete wedo (v0.2.0)
+description: Referencia del LED y el botón físico del Smart Hub en los programas del editor (v0.3.0)
 prev:
   title: Sensores
   url: /api/sensores.html
 next:
-  title: Tareas Cooperativas
-  url: /api/tareas.html
+  title: Teclado
+  url: /api/teclado.html
 ---
 
 # Periféricos Integrados (LED y botón)
@@ -97,7 +97,8 @@ Suspende cooperativamente el flujo actual hasta que llega un cambio. Devuelve el
 ## 💡 Ejemplo: avanzar hasta pulsar el botón
 
 ```python
-from wedo import Hub
+import wedopy
+from wedopy import Hub
 
 with Hub() as hub:
     motor = hub.motor("a")
@@ -109,7 +110,7 @@ with Hub() as hub:
         motor.stop()
         hub.led.color("light_green")
 
-    hub.task.spawn(run_until_pressed)
+    wedopy.task.spawn(run_until_pressed)
 
     # El flujo principal puede continuar con otras actividades.
     # Al salir del bloque, se espera a que la tarea termine.

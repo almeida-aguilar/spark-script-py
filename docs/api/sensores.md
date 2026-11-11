@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "API: Sensores"
-description: Referencia de los sensores de distancia e inclinación en el paquete wedo (v0.2.0)
+description: Referencia de los sensores de distancia e inclinación en los programas del editor (v0.3.0)
 prev:
   title: Motores
   url: /api/motores.html

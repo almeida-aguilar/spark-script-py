@@ -55,7 +55,7 @@ El Smart Hub se expone mediante los siguientes servicios y características GATT
 
 ## 🔍 Particularidades del Firmware (Comprobadas en Hardware)
 
-Durante la implementación y validación en hardware real de `wedo`, se identificaron comportamientos críticos que difieren de la documentación teórica:
+Durante la implementación y validación en hardware real de `wedopy`, se identificaron comportamientos críticos que difieren de la documentación teórica:
 
 ### 1. Sensor de inclinación (Tilt): No es un acelerómetro continuo
 
@@ -68,7 +68,7 @@ El sensor de inclinación WeDo 2.0 es en realidad un **interruptor mecánico de 
   - `7`: Inclinado a la izquierda (`left`)
   - `9`: Inclinado hacia adelante (`forward`)
 - **Modo Ángulo (Modo 0)**: **Requiere estrictamente `UNIT_RAW`** y emite un par de enteros con signo de 8 bits (`int8`, 2 bytes en total).
-  > **Advertencia de compatibilidad:** Si el software envía una solicitud de ángulo con `UNIT_SI` (como indicaba la especificación antigua de LEGO), el firmware del Hub **acepta el comando sin error pero nunca emite ninguna notificación**. `wedo` maneja esto automáticamente solicitando `UNIT_RAW`.
+  > **Advertencia de compatibilidad:** Si el software envía una solicitud de ángulo con `UNIT_SI` (como indicaba la especificación antigua de LEGO), el firmware del Hub **acepta el comando sin error pero nunca emite ninguna notificación**. `wedopy` maneja esto automáticamente solicitando `UNIT_RAW`.
 - **Modo Golpe/Bump (Modo 2)**: Aunque el firmware responde afirmativamente a la orden de configuración del modo 2, los sensores de inclinación comerciales nunca emiten notificaciones de golpe. Este modo no está implementado en el firmware físico.
 
 ### 2. Notificaciones por cambio (Delta-Only)
@@ -114,6 +114,6 @@ Consecuencias:
 ## 🛡️ Hilo Coordinador y Seguridad
 
 Debido a que el chip BLE del Smart Hub no soporta operaciones de escritura concurrentes desordenadas:
-1. `wedo` utiliza un **coordinador de escritor único** (*Single-Writer Coordinator*).
+1. `wedopy` utiliza un **coordinador de escritor único** (*Single-Writer Coordinator*).
 2. Todas las escrituras se realizan estrictamente **con respuesta** (*with response*), garantizando que el paquete anterior fue recibido y validado por el hub antes de emitir el siguiente.
 3. El *watchdog* de seguridad supervisa el latido continuo de batería (heartbeat cada 0.5 s) mientras los motores estén encendidos. Ante cualquier fallo de enlace, ejecuta intentos de parada de emergencia por un canal prioritario.

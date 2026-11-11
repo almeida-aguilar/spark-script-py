@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "API: Excepciones"
-description: Jerarquía de excepciones y gestión de errores en el paquete wedo (v0.2.0)
+description: Jerarquía de excepciones y gestión de errores en los programas Python del editor (v0.3.0)
 prev:
   title: Tareas Cooperativas
   url: /api/tareas.html
@@ -14,15 +14,16 @@ next:
 
 Los errores se expresan mediante excepciones nativas de Python. La API no adopta como convención general el retorno de códigos de error ni introduce un sistema paralelo.
 
-Todas las excepciones públicas pueden importarse desde el paquete raíz:
+Todas las excepciones públicas pueden importarse desde el módulo `wedopy`:
 
 ```python
-from wedo import (
+from wedopy import (
     WedoError,
     NotConnectedError,
     ConnectionFailedError,
     PortError,
     NoReadingError,
+    KeyboardUnavailableError,
     TaskCancelled,
 )
 ```
@@ -37,13 +38,14 @@ Exception
     ├── NotConnectedError (El hub no está conectado o la conexión se perdió)
     ├── ConnectionFailedError (El intento de conexión falló o se agotó el tiempo)
     ├── PortError (Puerto vacío o con un periférico de otro tipo)
-    └── NoReadingError (El sensor todavía no ha informado su primera lectura)
+    ├── NoReadingError (El sensor todavía no ha informado su primera lectura)
+    └── KeyboardUnavailableError (El entorno no puede entregar eventos de teclado)
 
 BaseException
 └── TaskCancelled (La tarea fue cancelada; no es un error de ejecución)
 ```
 
-Los demás errores usan las excepciones estándar de Python: `ValueError` (fuera de rango, filtro no admitido, color desconocido, puerto no válido), `TypeError` (argumento de tipo o número incorrecto) y `RuntimeError` (espera cooperativa fuera del flujo principal o de una tarea).
+Los demás errores usan las excepciones estándar de Python: `ValueError` (fuera de rango, filtro no admitido, color o tecla desconocidos, puerto no válido), `TypeError` (argumento de tipo o número incorrecto) y `RuntimeError` (espera cooperativa fuera del flujo principal o de una tarea).
 
 ---
 
@@ -59,6 +61,8 @@ Los demás errores usan las excepciones estándar de Python: `ValueError` (fuera
 | Valor fuera de rango | `ValueError` | `motor (puerto "a"): el valor 150 está fuera del rango -100..100` |
 | Filtro no admitido | `ValueError` | `button: filtro "pressd" no admitido (admitidos: "pressed", "released")` |
 | Color desconocido | `ValueError` | `led: color "green" no válido (colores válidos: off, pink, ...)` |
+| Tecla no válida | `ValueError` | `tecla "xx" no válida (teclas válidas: a-z, 0-9, up, down, left, right, space, enter, escape, tab, backspace, shift, control, alt)` |
+| Teclado no disponible | `KeyboardUnavailableError` | `teclado no disponible en este entorno` |
 | Tipo de argumento | `TypeError` | `motor (puerto "a"): run esperaba un número y recibió str` |
 | Conexión fallida | `ConnectionFailedError` | `no se pudo conectar con el hub` |
 | Tiempo agotado en `with` | `ConnectionFailedError` | `no se pudo conectar con el hub (tiempo de espera agotado: 10 s)` |
@@ -70,7 +74,7 @@ Los mensajes están en español e identifican el recurso y, cuando existe, el pu
 > Los programas **no deben depender del texto exacto**: para distinguir situaciones se capturan los tipos de excepción o se usa la lógica del programa (`hub.ports()`, `hub.wait_connection()`), no el análisis de cadenas.
 
 ### `WedoError`
-Excepción base para todos los errores generados por la biblioteca. Si deseas capturar cualquier problema originado por `wedo`, captura esta clase.
+Excepción base para todos los errores de la API. Si deseas capturar cualquier problema originado por `wedopy`, captura esta clase.
 
 ### `NotConnectedError`
 Se lanza al usar un recurso con el hub desconectado, y también cuando la conexión se pierde durante una espera (`wait_change()` termina con ella). Es la excepción más frecuente: cubre tanto el «aún no conectado» como el «se acaba de perder el enlace».
@@ -84,6 +88,9 @@ Se produce al usar un recurso sobre un puerto donde no hay ningún periférico c
 ### `NoReadingError`
 Un sensor todavía no ha informado ninguna lectura. Suele ocurrir con un periférico enchufado después de la conexión: hasta que informe su primer valor, `read()` lanza esta excepción.
 
+### `KeyboardUnavailableError`
+El entorno no puede entregar eventos de pulsación y liberación de teclas. Lanza al **usar** una tecla (`read()`, `has_change()`, `wait_change()`), no al seleccionarla con `wedopy.key()`. Más detalles en [Teclado](teclado.html).
+
 ### `TaskCancelled`
 La cancelación de una tarea se entrega como esta excepción dentro de la tarea (en su siguiente punto cooperativo). **Deriva de `BaseException`, no de `WedoError`**, de modo que un `except Exception:` no la captura por accidente. La cancelación es persistente: tras el pedido, todo punto cooperativo posterior vuelve a lanzarla. Más detalles en [Tareas Cooperativas](tareas.html).
 
@@ -92,7 +99,7 @@ La cancelación de una tarea se entrega como esta excepción dentro de la tarea 
 ## 💡 Ejemplo de manejo de excepciones
 
 ```python
-from wedo import Hub, ConnectionFailedError, PortError, NoReadingError, WedoError
+from wedopy import Hub, ConnectionFailedError, PortError, NoReadingError, WedoError
 
 try:
     with Hub() as hub:
@@ -110,7 +117,7 @@ except PortError as error:
 except NoReadingError:
     print("El sensor aún no ha dado su primera lectura.")
 except WedoError as error:
-    print("Ocurrió un error en wedo:", error)
+    print("Ocurrió un error en wedopy:", error)
 ```
 
 Para evitar `PortError` se puede consultar antes qué hay en cada puerto:

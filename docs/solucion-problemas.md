@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Solución de Problemas
-description: Guía de diagnóstico y resolución de errores comunes con el paquete wedo y WeDo 2.0
+description: Guía de diagnóstico y resolución de errores comunes de la aplicación web y WeDo 2.0
 prev:
   title: Ejemplos Prácticos
   url: /ejemplos.html
@@ -23,17 +23,8 @@ Esta guía recopila las dudas, errores frecuentes y procedimientos de diagnósti
 
 1. **Estado del botón y LED:** Verifica que hayas presionado el botón central del Smart Hub. El LED debe parpadear suavemente en blanco. Si no parpadea o se apaga inmediatamente, las pilas están agotadas.
 2. **Conexión previa:** El Smart Hub WeDo 2.0 **solo admite un único dispositivo conectado a la vez**. Si el hub está conectado a otra aplicación (por ejemplo, Scratch Desktop o la app oficial de LEGO), ninguna otra conexión BLE podrá establecerse. Cierra esas aplicaciones o apaga y vuelve a encender el Hub.
-3. **Adaptador Bluetooth activo:** Comprueba en tu terminal:
-   ```bash
-   bluetoothctl power on
-   bluetoothctl scan on
-   ```
-   Deberías ver aparecer un dispositivo con nombre similar a `LPF2 Smart Hub 2.0` o `LPF2 Smart Hub 3.0`.
-4. **Permisos en Linux:** Asegúrate de que tu usuario pertenezca al grupo `bluetooth`:
-   ```bash
-   sudo usermod -aG bluetooth $USER
-   ```
-   Reinicia la sesión si acabas de agregarlo.
+3. **Navegador compatible:** Web Bluetooth requiere Chrome, Edge u otro navegador basado en Chromium (versión 137 o superior, por el puente síncrono de Pyodide), y la página debe servirse por **HTTPS** o `localhost`.
+4. **Permisos del navegador:** Al pulsar «Conectar» debe aparecer el selector de dispositivos del navegador con `LPF2 Smart Hub 2.0` (o `3.0`). Si no aparece, revisa que el Bluetooth del sistema esté activo y concede el permiso de ubicación/Bluetooth si el sistema lo pide.
 
 Si la conexión tarda en completarse (hub en modo emparejamiento lento), da más margen al bloque `with`:
 
@@ -80,7 +71,7 @@ puerto "a": hay un periférico "distance" y se esperaba "motor"
 Ejecuta este código para comprobar qué reconoce el hub:
 
 ```python
-from wedo import Hub
+from wedopy import Hub
 
 with Hub() as hub:
     print("Puertos detectados:", hub.ports())
@@ -116,11 +107,11 @@ with Hub() as hub:
        motor = hub.motor("A")
        try:
            motor.run(80)
-           hub.task.wait(2)
+           wedopy.task.wait(2)
        finally:
            motor.stop()  # Se ejecuta incluso si la tarea es cancelada
    ```
-3. Recuerda que durante la limpieza (`finally`) no puedes ceder el control (`hub.task.wait()` lanza de nuevo `TaskCancelled`); las operaciones directas como `motor.stop()` funcionan con normalidad.
+3. Recuerda que durante la limpieza (`finally`) no puedes ceder el control (`wedopy.task.wait()` lanza de nuevo `TaskCancelled`); las operaciones directas como `motor.stop()` funcionan con normalidad.
 
 ---
 
@@ -151,28 +142,13 @@ En el navegador, además: Web Bluetooth requiere Chrome, Edge u otro navegador b
 
 ---
 
-### 3. `ModuleNotFoundError: No module named 'wedo'` tras instalar
-
-**Causa:** Es probable que estés ejecutando Python desde fuera del entorno virtual, o que la instalación haya fallado.
-
-**Solución:**
-
-1. Confirma que el entorno virtual está activado (el prompt debe mostrar `(.venv)` al inicio).
-2. Verifica la instalación:
-   ```powershell
-   python -c "import wedo; print(wedo.__version__)"
-   ```
-3. Si el comando falla, revisa la salida de `pip install` para identificar el error.
-
----
-
 ## 🔍 Activación de Registros Detallados (Logging)
 
-`wedo` utiliza el módulo estándar `logging` de Python. Para visualizar el flujo del programa y los errores de tareas no capturadas:
+Los programas usan el módulo estándar `logging` de Python, y los mensajes aparecen en el **panel de salida Python** de la aplicación. Para ver el flujo del programa y los errores de tareas no capturadas:
 
 ```python
 import logging
-from wedo import Hub
+from wedopy import Hub
 
 # Activar registro en nivel DEBUG
 logging.basicConfig(
@@ -187,11 +163,5 @@ with Hub() as hub:
 
 **Loggers disponibles:**
 
-- `wedo`: Flujo de operaciones de alto nivel y conexión.
-- `wedo` (nivel `ERROR`): si una tarea falla con una excepción no capturada, el runtime informa del error con su traceback y no propaga la excepción a quien la creó.
-
-En **Windows**, si los logs no aparecen en la consola de PowerShell, asegúrate de que la codificación sea UTF-8:
-
-```powershell
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-```
+- `wedopy`: Flujo de operaciones de alto nivel y conexión.
+- `wedopy` (nivel `ERROR`): si una tarea falla con una excepción no capturada, el runtime informa del error con su traceback en el panel de salida y no propaga la excepción a quien la creó.
