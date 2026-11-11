@@ -1,5 +1,6 @@
 """Cycle through the predefined LED colours, then show an RGB colour."""
-from wedo import Hub
+import wedopy
+from wedopy import Hub
 
 COLOURS = ["pink", "purple", "blue", "light_blue", "light_green", "dark_green",
            "yellow", "orange", "red", "white"]
@@ -7,6 +8,6 @@ COLOURS = ["pink", "purple", "blue", "light_blue", "light_green", "dark_green",
 with Hub() as hub:
     for colour in COLOURS:
         hub.led.color(colour)
-        hub.task.wait(0.3)
+        wedopy.task.wait(0.3)
     hub.led.color(255, 80, 0)
-    hub.task.wait(1)
+    wedopy.task.wait(1)

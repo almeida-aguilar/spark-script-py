@@ -1,8 +1,10 @@
-// Tareas cooperativas de la API v0.2.0: `hub.task`.
+// Tareas cooperativas de la API v0.3.0: `task`, del módulo (las tareas son del
+// programa y no del hub; hay un único planificador por aplicación).
 //
-//   task = hub.task.spawn(fn)   # fn es cualquier invocable (función JS o Python)
-//   await hub.task.wait(1)      # suspende el flujo actual (cooperativo)
-//   task.cancel() / task.join()
+//   import { task } from wedopy-web;
+//   const t = task.spawn(fn)   // fn es cualquier invocable (función JS o Python)
+//   await task.wait(1)         // suspende el flujo actual (cooperativo)
+//   t.cancel() / t.join()
 //
 // En el navegador cada tarea corre en su propia pila: las de Python se invocan con
 // `callPromising()` (JSPI), así que mientras una espera, las demás avanzan de verdad.
@@ -229,7 +231,7 @@ export class TaskManager {
 }
 
 /**
- * El objeto `hub.task`: la cara pública de JavaScript (`spawn(fn)`, `await wait(s)`).
+ * El objeto `task` del módulo: la cara pública de JavaScript (`spawn(fn)`, `await wait(s)`).
  * También sirve de puente para Python, que llama con las firmas internas
  * `spawn(id, callable)`, `wait(id, seconds)`, `join(id, joinerId)`, `cancel(id)`,
  * `cancelAll`, `allSettled` (despachamos por el tipo del primer argumento).
@@ -278,3 +280,6 @@ export class TaskProtocol {
 }
 
 export { MARK };
+
+/** La tarea del módulo: un único planificador por aplicación (las tareas son del programa). */
+export const task = new TaskProtocol(new TaskManager());

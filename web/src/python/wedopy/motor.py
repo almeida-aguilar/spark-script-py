@@ -1,4 +1,4 @@
-"""Motores (API v0.2.0).
+"""Motores (API v0.3.0).
 
     motor = hub.motor("A")
     motor.run(50)      # -100..100: el signo es el sentido, el valor absoluto la intensidad

@@ -1,4 +1,4 @@
-"""Puente síncrono entre la API Python de Wedo y la API JavaScript de la aplicación.
+"""Puente síncrono entre la API Python de wedopy y la API JavaScript de la aplicación.
 
 Funciona con Pyodide + JSPI (Chrome >= 137): ``run_sync`` bloquea el programa Python hasta que
 la promesa de JavaScript se resuelve, sin congelar la página. Así, los programas escritos de
@@ -10,7 +10,7 @@ a una espera lanza ``KeyboardInterrupt`` (igual que Ctrl+C).
 Regla de oro para la cancelación (aprendido con trazas en Pyodide): JAMÁS se rechaza una
 promesa cuyo resultado espera ``run_sync`` — eso deja continuaciones de pila huérfanas. Las
 esperas se **resuelven** con un marcador ("ok" | "cancelled" | "stopped") y el código Python,
-de vuelta, lanza la excepción en su propia pila (véase ``wedo.task``).
+de vuelta, lanza la excepción en su propia pila (véase ``wedopy.task``).
 """
 import js
 from pyodide.ffi import JsException, run_sync
@@ -20,6 +20,7 @@ from .exceptions import (
     NoReadingError,
     NotConnectedError,
     PortError,
+    KeyboardUnavailableError,
     TaskCancelled,
     WedoError,
 )
@@ -33,6 +34,7 @@ _JS_ERRORS = {
     "NoReadingError": NoReadingError,
     "HubDisconnectedError": NotConnectedError,
     "InvalidStateError": NotConnectedError,
+    "KeyboardUnavailableError": KeyboardUnavailableError,
     "HubConnectionError": ConnectionFailedError,
     "DeviceNotFoundError": PortError,
     "DeviceTypeError": PortError,
@@ -44,7 +46,7 @@ _JS_ERRORS = {
 
 
 def _bridge():
-    return js.wedoBridge
+    return js.wedopyBridge
 
 
 def hub():
@@ -53,6 +55,16 @@ def hub():
     if js_hub is None or js_hub is js.undefined:
         raise NotConnectedError("no hay ningún hub conectado en el panel")
     return js_hub
+
+
+def task_manager():
+    """El planificador de tareas de JavaScript: es del módulo, no del hub (v5 §12)."""
+    return _bridge().getTask()
+
+
+def key(name):
+    """La selección de tecla de JavaScript (``wedopy.key``); valida el nombre."""
+    return _bridge().key(name)
 
 
 def check_stop():
@@ -117,4 +129,4 @@ def sleep(seconds):
     normal, sin rechazar); ``check_stop()`` tras volver de ``run_sync`` lanza aquí el
     KeyboardInterrupt, en puro Python.
     """
-    return wait(js.wedoBridge.sleep(seconds))
+    return wait(js.wedopyBridge.sleep(seconds))

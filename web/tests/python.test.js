@@ -37,7 +37,7 @@ describe("editor Python (Pyodide + JSPI)", () => {
   it("usa la API nueva: with Hub(), ports() y led.color()", async () => {
     sim.setDistance(7);
     const r = await run(`
-from wedo import Hub
+from wedopy import Hub
 with Hub() as hub:
     print("ports", hub.ports())
     print("dist", hub.distance("B").read())
@@ -54,7 +54,7 @@ with Hub() as hub:
 
   it("las tareas cooperativas funcionan (spawn + wait)", async () => {
     const code = (await import("../src/python/examples/blink_and_move.py?raw")).default;
-    const r = await run(code.replace("hub.task.wait(3)", "hub.task.wait(0.4)"));
+    const r = await run(code.replace("wedopy.task.wait(3)", "wedopy.task.wait(0.4)"));
     expect(r.ok).toBe(true);
     expect(sim.motors[1]).toBe(0);
     expect(sim.writesTo(K.CHAR_OUTPUT_CMD).filter((d) => d[0] === 6).length).toBeGreaterThan(2); // parpadeo
@@ -62,7 +62,7 @@ with Hub() as hub:
 
   it("traduce los errores a la jerarquía de la API", async () => {
     const r = await run(`
-from wedo import Hub, PortError, NotConnectedError, WedoError
+from wedopy import Hub, PortError, NotConnectedError, WedoError
 hub = Hub()
 for fn, exc in [(lambda: hub.motor("B").run(10), PortError),
                 (lambda: hub.distance("A").read(), PortError)]:
@@ -93,7 +93,7 @@ except ValueError as e:
 
   it("muestra los errores del programa con su traceback y para los motores", async () => {
     const r = await run(`
-from wedo import Hub
+from wedopy import Hub
 hub = Hub()
 hub.motor("A").run(60)
 raise RuntimeError("boom")
@@ -106,7 +106,7 @@ raise RuntimeError("boom")
   it("«Detener» interrumpe un programa dormido y para los motores", async () => {
     const p = run(`
 import time
-from wedo import Hub
+from wedopy import Hub
 hub = Hub()
 hub.motor("A").run(50)
 time.sleep(30)
@@ -123,19 +123,20 @@ print("no debería llegar")
 
   it("«Detener» cancela las tareas y ejecuta sus finally", async () => {
     const p = run(`
-from wedo import Hub
+import wedopy
+from wedopy import Hub
 hub = Hub()
 def mover():
     m = hub.motor("A")
     try:
         m.run(40)
         while True:
-            hub.task.wait(0.05)
+            wedopy.task.wait(0.05)
     finally:
         m.stop()
         print("limpieza")
-hub.task.spawn(mover)
-hub.task.wait(30)
+wedopy.task.spawn(mover)
+wedopy.task.wait(30)
 `);
     await new Promise((r) => setTimeout(r, 400));
     rt.stop();
@@ -147,16 +148,17 @@ hub.task.wait(30)
 
   it("cancelar una tarea lanza TaskCancelled y ejecuta su finally", async () => {
     const r = await run(`
-from wedo import Hub, TaskCancelled
+import wedopy
+from wedopy import Hub, TaskCancelled
 hub = Hub()
 def mover():
     try:
         while True:
-            hub.task.wait(0.05)
+            wedopy.task.wait(0.05)
     finally:
         print("limpieza")
-t = hub.task.spawn(mover)
-hub.task.wait(0.15)
+t = wedopy.task.spawn(mover)
+wedopy.task.wait(0.15)
 t.cancel()
 t.join()
 `);
@@ -164,10 +166,43 @@ t.join()
     expect(out.join("")).toContain("limpieza");
   });
 
+  it("el teclado: seleccionar, usar y errores (sin entorno de captura en node)", async () => {
+    const r = await run(`
+import wedopy
+from wedopy import Hub, KeyboardUnavailableError, WedoError
+
+space = wedopy.key("space")  # del módulo: no hace falta crear un Hub
+up = wedopy.key("UP")
+print("keys", repr(space), up.name, space.name)
+try:
+    space.read()
+    print("leido")
+except KeyboardUnavailableError as e:
+    print("kue", type(e) is KeyboardUnavailableError, isinstance(e, WedoError))
+
+with Hub() as hub:
+    print("en el with ok")
+try:
+    wedopy.key("xx")
+except ValueError as e:
+    print("value", "tecla" in str(e) and "no válida" in str(e))
+try:
+    wedopy.key(3)
+except TypeError:
+    print("type ok")
+`);
+    expect(r.ok, out.join("\n")).toBe(true);
+    expect(out.join("")).toContain("keys Key('space') up space");
+    expect(out.join("")).toContain("en el with ok");
+    expect(out.join("")).toContain("kue True True"); // usar lanza KeyboardUnavailableError en node
+    expect(out.join("")).toContain("value True");
+    expect(out.join("")).toContain("type ok");
+  });
+
   it("sin hub conectado da un error claro", async () => {
     const saved = hub;
     hub = null;
-    const r = await run("from wedo import Hub\nHub()");
+    const r = await run("from wedopy import Hub\nHub()");
     hub = saved;
     expect(r.ok).toBe(false);
     expect(out.join("")).toMatch(/NotConnectedError|No hay hub/);

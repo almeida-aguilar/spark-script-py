@@ -15,7 +15,6 @@ import { LED } from "./led.js";
 import { Motor } from "./motor.js";
 import { DistanceSensor, TiltSensor } from "./sensors.js";
 import { Session } from "./session.js";
-import { TaskManager, TaskProtocol } from "./tasks.js";
 
 const PORTS = { A: K.CONN_PORT_A, B: K.CONN_PORT_B };
 
@@ -47,8 +46,6 @@ export class Hub {
     this._session = new Session(transport, timing);
     this._led = new LED(this._session);
     this._button = new Button(this._session);
-    this._taskManager = new TaskManager();
-    this._task = new TaskProtocol(this._taskManager);
     this._connectError = null;
     this._connecting = null;
   }
@@ -143,9 +140,6 @@ export class Hub {
 
   get led() { return this._led; }
   get button() { return this._button; }
-
-  /** Concurrencia cooperativa: `spawn(fn)`, `wait(s)`, tareas con `join`/`cancel`. */
-  get task() { return this._task; }
 }
 
 export { NotConnectedError };

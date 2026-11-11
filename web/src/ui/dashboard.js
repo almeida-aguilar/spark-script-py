@@ -1,5 +1,5 @@
 // Motores, sensores y LED. Solo presentación: toda acción pasa por `app.run`.
-// API v0.2.0: sin grupo de motores (dos llamadas explícitas), `led.color(nombre|rgb)`,
+// API v0.3.0: sin grupo de motores (dos llamadas explícitas), `led.color(nombre|rgb)`,
 // selectores por puerto que no exigen conexión.
 import { $, h, setEnabled } from "./components/dom.js";
 
@@ -76,7 +76,7 @@ export function bindDashboard(app) {
     setEnabled([bothRun, bothStop], on && motors === 2);
   }
 
-  /** Puertos del hub: `ports()` es un método en la API v0.2.0. */
+  /** Puertos del hub: `ports()` es un método en la API v0.3.0. */
   function currentPorts() {
     try { return app.connected ? app.hub.ports() : {}; } catch { return {}; }
   }

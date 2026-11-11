@@ -1,10 +1,11 @@
-"""El hub Wedo (LEGO WeDo 2.0 Smart Hub) (API v0.2.0).
+"""El hub Wedo (LEGO WeDo 2.0 Smart Hub) (API v0.3.0).
 
-    from wedo import Hub
+    from wedopy import Hub
 
+    import wedopy
     with Hub() as hub:
         hub.motor("A").run(50)
-        hub.task.wait(2)
+        wedopy.task.wait(2)
         hub.motor("A").stop()
 
 Crear un ``Hub`` no conecta: hay que llamar a ``connect()`` (que solo inicia el intento) y
@@ -24,7 +25,7 @@ from .exceptions import ConnectionFailedError
 from .led import LED
 from .motor import Motor
 from .sensors import DistanceSensor, TiltSensor
-from .task import TaskNamespace
+from .task import task as _task
 
 
 def _timeout(name, value):
@@ -57,7 +58,6 @@ class Hub:
         self._connect_timeout = _timeout("connect_timeout", connect_timeout)
         self._led = LED(self._js.led)
         self._button = Button(self._js.button)
-        self._task = TaskNamespace(self._js.task)
 
     # -- ciclo de vida ------------------------------------------------------------------
 
@@ -109,11 +109,6 @@ class Hub:
         """El botón integrado del hub."""
         return self._button
 
-    @property
-    def task(self) -> TaskNamespace:
-        """La concurrencia cooperativa: ``spawn`` y ``wait``."""
-        return self._task
-
     # -- gestor de contexto ---------------------------------------------------------------
 
     def __enter__(self) -> "Hub":
@@ -135,12 +130,14 @@ class Hub:
         # La conexión NO se cierra aquí: en el navegador el enlace del hub es del panel
         # de la aplicación, no del programa (el botón «Desconectar» es quien lo cierra).
         try:
+            # Las tareas son del programa y no del hub (v5 §12): el bloque las espera
+            # (o las cancela, en la salida por excepción) igualmente.
             if exc_type is None:
-                _bridge.wait(_bridge.call(self._js.task.allSettled))
+                _task._all_settled()
             else:
-                _bridge.call(self._js.task.cancelAll)
+                _task._cancel_all()
                 try:
-                    _bridge.wait(_bridge.call(self._js.task.allSettled))
+                    _task._all_settled()
                 except Exception:
                     pass
         finally:

@@ -1,4 +1,4 @@
-// Botón integrado del hub (API v0.2.0): `hub.button`.
+// Botón integrado del hub (API v0.3.0): `hub.button`.
 //
 //   hub.button.read()                  -> bool
 //   hub.button.has_change("pressed")   -> bool (consume los cambios pendientes)

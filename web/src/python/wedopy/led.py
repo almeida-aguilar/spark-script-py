@@ -1,4 +1,4 @@
-"""LED integrado del hub (API v0.2.0): ``hub.led``.
+"""LED integrado del hub (API v0.3.0): ``hub.led``.
 
     hub.led.color("green")     # color predefinido por nombre
     hub.led.color(255, 0, 0)   # color absoluto (canales 0..255)

@@ -1,6 +1,6 @@
 {
   "name": "wedopy-web",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "wedopy Web: LEGO WeDo 2.0 Smart Hub desde el navegador (Web Bluetooth)",

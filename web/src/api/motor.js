@@ -1,4 +1,4 @@
-// Motores (API v0.2.0): `hub.motor("A")`.
+// Motores (API v0.3.0): `hub.motor("A")`.
 //
 //   motor.run(50)   # -100..100; el signo es el sentido, el valor absoluto la intensidad
 //   motor.stop()     # alias de run(0)

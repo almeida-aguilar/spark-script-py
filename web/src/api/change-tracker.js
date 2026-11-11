@@ -1,4 +1,4 @@
-// Seguimiento de cambios de un recurso de entrada (API v0.2.0).
+// Seguimiento de cambios de un recurso de entrada (API v0.3.0).
 //
 // Cada recurso (distancia, inclinación, botón) mantiene sus propios cambios pendientes:
 // `has_change()` los consulta y los consume, `wait_change()` espera a que llegue uno.

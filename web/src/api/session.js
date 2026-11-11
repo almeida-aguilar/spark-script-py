@@ -91,7 +91,7 @@ export class Session {
     hookPageLifecycle();
   }
 
-  /** Desconecta: para los motores y cierra el enlace. */
+  /** Desconecta: para los motores y cierra el enlace. Libera también el teclado. */
   async disconnect() {
     let confirmed = true;
     if (this._core) confirmed = await this._core.disconnect();

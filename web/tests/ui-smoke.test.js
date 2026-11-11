@@ -45,7 +45,7 @@ describe("interfaz + simulador", () => {
     $("#btn-disconnect").click();
     await sleep(300);
     expect($("#state").textContent).toBe("sin conexión");
-    expect($("#py-code").value).toContain("from wedo import Hub"); // editor montado con el programa inicial
+    expect($("#py-code").value).toContain("from wedopy import Hub"); // editor montado con el programa inicial
     expect($("#py-export").disabled).toBe(false); // exportación de proyecto disponible
     expect(errors).toEqual([]);
   }, 15000);

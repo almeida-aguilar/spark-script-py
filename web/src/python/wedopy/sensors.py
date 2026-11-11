@@ -1,4 +1,4 @@
-"""Sensores de distancia e inclinación (API v0.2.0).
+"""Sensores de distancia e inclinación (API v0.3.0).
 
     distance = hub.distance("A")
     distance.read()                      # cm enteros 0..10

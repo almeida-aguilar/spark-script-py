@@ -6,6 +6,7 @@
 - ``ConnectionFailedError``: el intento de conexión falló o fue rechazado.
 - ``PortError``: el puerto está vacío o tiene un periférico de otro tipo.
 - ``NoReadingError``: todavía no hay una lectura válida del dispositivo.
+- ``KeyboardUnavailableError``: el entorno no puede entregar eventos de teclado.
 
 ``TaskCancelled`` deriva de ``BaseException`` (no de ``WedoError``): un ``except
 Exception`` no debe capturar por accidente la cancelación de una tarea.
@@ -17,6 +18,7 @@ __all__ = [
     "ConnectionFailedError",
     "PortError",
     "NoReadingError",
+    "KeyboardUnavailableError",
     "TaskCancelled",
 ]
 
@@ -39,6 +41,10 @@ class PortError(WedoError):
 
 class NoReadingError(WedoError):
     """Todavía no hay una lectura válida del dispositivo."""
+
+
+class KeyboardUnavailableError(WedoError):
+    """El entorno no puede entregar eventos de pulsación y liberación de teclas."""
 
 
 class TaskCancelled(BaseException):

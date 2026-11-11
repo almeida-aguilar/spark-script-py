@@ -23,7 +23,7 @@ export class AmbiguousDeviceError extends WedoError { static errorName = "Ambigu
 export class InvalidStateError extends WedoError { static errorName = "InvalidStateError"; }
 export class UnsupportedFeatureError extends WedoError { static errorName = "UnsupportedFeatureError"; }
 
-// -- Excepciones públicas de la API v0.2.0 (ver docs de la API) ----------------------
+// -- Excepciones públicas de la API v0.3.0 (ver docs de la API) ----------------------
 // `NotConnectedError`: se usa un recurso con el hub desconectado, o se pierde la conexión
 // durante una espera. Sustituye a HubDisconnectedError / InvalidStateError en la API pública.
 export class NotConnectedError extends WedoError { static errorName = "NotConnectedError"; }
@@ -33,6 +33,8 @@ export class ConnectionFailedError extends WedoError { static errorName = "Conne
 export class PortError extends WedoError { static errorName = "PortError"; }
 // `NoReadingError`: todavía no hay una lectura válida del dispositivo.
 export class NoReadingError extends WedoError { static errorName = "NoReadingError"; }
+// `KeyboardUnavailableError`: el entorno no puede entregar eventos de teclado.
+export class KeyboardUnavailableError extends WedoError { static errorName = "KeyboardUnavailableError"; }
 // `TaskCancelled`: una tarea fue cancelada (cooperativa). No deriva de WedoError, como
 // `TaskCancelled(BaseException)` en Python: un manejo de error genérico no la captura.
 export class TaskCancelled extends Error {

@@ -4,6 +4,7 @@ import * as K from "../src/core/constants.js";
 import { BLEError, NotConnectedError } from "../src/core/errors.js";
 import { HubState } from "../src/core/state-machine.js";
 import { Coordinator } from "../src/core/coordinator.js";
+import { task as wedopyTask } from "../src/api/tasks.js";
 import { coreOf, makeHub, sleep, waitFor, FAST } from "./helpers.js";
 
 function captureLog(hub) {
@@ -172,13 +173,13 @@ describe("watchdog y seguridad", () => {
     hub.connect();
     await hub.waitConnection(5);
     const seen = [];
-    const task = hub.task.spawn(async () => {
+    const t = wedopyTask.spawn(async () => {
       await hub.motor("A").run(50);
       sim.failReads = true;
       await sleep(1.0); // espera larga sin ceder al planificador de tareas
       seen.push(sim.motors[1]); // el watchdog actuó mientras tanto
     });
-    await task.join();
+    await t.join();
     try {
       expect(seen).toEqual([0]);
       expect(coreOf(hub).state).toBe(HubState.ERROR);

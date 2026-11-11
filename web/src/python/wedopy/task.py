@@ -1,7 +1,7 @@
-"""Concurrencia cooperativa (API v0.2.0): ``hub.task``.
+"""Concurrencia cooperativa (API v0.3.0): ``wedopy.task`` (del módulo, v5 §12).
 
-    task = hub.task.spawn(movement)   # movement es un invocable sin parámetros
-    hub.task.wait(1)                   # suspende el flujo actual
+    task = wedopy.task.spawn(movement)   # movement es un invocable sin parámetros
+    wedopy.task.wait(1)                  # suspende el flujo actual
     task.cancel()                      # cancelación cooperativa
     task.join()                        # espera a que termine
 
@@ -14,7 +14,7 @@ accidente: si se captura, hay que volver a lanzarla.
 
 En el navegador cada tarea corre en su propia pila de Python, de modo que varias tareas se
 alternan de verdad mientras una espera. Si una tarea falla con una excepción no capturada,
-el runtime lo informa por el registrador ``"wedo"`` (nivel ERROR, con traceback) y no
+el runtime lo informa por el registrador ``"wedopy"`` (nivel ERROR, con traceback) y no
 propaga el error a quien la creó.
 """
 import logging
@@ -23,7 +23,7 @@ import sys
 from . import _bridge
 from .exceptions import TaskCancelled
 
-_log = logging.getLogger("wedo")
+_log = logging.getLogger("wedopy")
 
 # Tareas vivas por id (para poder comprobar la cancelación).
 _tasks = {}
@@ -72,13 +72,13 @@ def _seconds(value):
     _number("espera", value)
     if value != value or value == float("inf") or value == float("-inf") or value < 0:
         raise ValueError(
-            "hub.task: wait esperaba un número mayor o igual que 0 y recibió %r" % (value,)
+            "wedopy.task: wait esperaba un número mayor o igual que 0 y recibió %r" % (value,)
         )
     return float(value)
 
 
 class Task:
-    """Una tarea concurrente creada con ``hub.task.spawn``."""
+    """Una tarea concurrente creada con ``wedopy.task.spawn``."""
 
     def __init__(self, manager, function) -> None:
         self._manager = manager
@@ -151,15 +151,26 @@ def _resolve_marker(marker) -> None:
 
 
 class TaskNamespace:
-    """El espacio de nombres ``hub.task``."""
+    """El espacio de nombres ``wedopy.task`` (instancia única: hay un planificador
+    por proceso; las tareas son del programa y no del hub, v5 §12)."""
 
-    def __init__(self, manager) -> None:
-        self._manager = manager
+    @property
+    def _manager(self):
+        """El planificador de JavaScript, que vive en el puente del runtime."""
+        return _bridge.task_manager()
+
+    def _all_settled(self) -> None:
+        """Espera cooperativamente a que terminen todas las tareas (lo usa el ``with``)."""
+        _bridge.wait(_bridge.call(self._manager.allSettled))
+
+    def _cancel_all(self) -> None:
+        """Pide la cancelación de todas las tareas en ejecución (lo usa el ``with``)."""
+        _bridge.call(self._manager.cancelAll)
 
     def spawn(self, function) -> Task:
         """Crea y programa una tarea; devuelve su referencia."""
         if not callable(function):
-            raise TypeError("spawn() needs a callable, not %s" % type(function).__name__)
+            raise TypeError("spawn esperaba un invocable y recibió %s" % type(function).__name__)
         task = Task(self._manager, function)
         _bridge.call(self._manager.spawn, task._id, task._entry)
         return task
@@ -169,3 +180,7 @@ class TaskNamespace:
         task_id = _current_task_id()
         _resolve_marker(_bridge.wait(_bridge.call(self._manager.wait, task_id, _seconds(seconds))))
         _check_cancelled(task_id)
+
+
+# La instancia del módulo: ``wedopy.task``.
+task = TaskNamespace()

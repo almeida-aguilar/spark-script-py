@@ -1,9 +1,11 @@
-// Runtime de Python (Pyodide) para el editor. Ejecuta programas escritos para la biblioteca
+// Runtime de Python (Pyodide) para el editor. Ejecuta programas escritos para el paquete
 // Python `wedopy` sobre el hub conectado en la aplicación, mediante un puente síncrono
 // (JSPI: `pyodide.ffi.run_sync`). Requiere un navegador con JSPI (Chrome/Edge >= 137).
 import { UnsupportedFeatureError } from "../core/errors.js";
+import { task } from "../api/tasks.js";
+import { key, releaseKeyboard, resetKeyboard } from "../api/keyboard.js";
 
-const PY_FILES = import.meta.glob("./wedo/*.py", { query: "?raw", import: "default", eager: true });
+const PY_FILES = import.meta.glob("./wedopy/*.py", { query: "?raw", import: "default", eager: true });
 
 // «Detener» NO rechaza ninguna promesa: los sleep despiertan antes de tiempo con una
 // resolución normal y es _bridge.wait quien, tras volver de run_sync (la frontera JSPI ya
@@ -12,7 +14,7 @@ const PY_FILES = import.meta.glob("./wedo/*.py", { query: "?raw", import: "defau
 
 const BOOTSTRAP = `
 import time
-from wedo import _bridge
+from wedopy import _bridge
 time.sleep = _bridge.sleep   # sleep cooperativo: cede a la página y admite «Detener»
 `;
 
@@ -59,14 +61,17 @@ export class PythonRuntime {
     }
     py.setStdout({ batched: (s) => this._out("stdout", s) });
     py.setStderr({ batched: (s) => this._out("stderr", s) });
-    py.FS.mkdirTree("/home/pyodide/wedo");
+    py.FS.mkdirTree("/home/pyodide/wedopy");
     for (const [path, source] of Object.entries(PY_FILES)) {
-      py.FS.writeFile(`/home/pyodide/wedo/${path.split("/").pop()}`, source);
+      py.FS.writeFile(`/home/pyodide/wedopy/${path.split("/").pop()}`, source);
     }
     // «Detener» despierta los sleep antes de tiempo (resolución normal, sin rechazar):
     // _bridge.wait detecta la bandera al volver de run_sync y lanza KeyboardInterrupt.
-    globalThis.wedoBridge = {
+    globalThis.wedopyBridge = {
       getHub: () => this._getHub() ?? undefined,
+      // `task` y el teclado son del módulo (v5 §12/§10): no dependen del hub conectado.
+      getTask: () => task,
+      key: (name) => key(name),
       // Un solo disparo, como Ctrl+C: la limpieza del programa (finally) puede llamar al hub.
       stopRequested: () => { const requested = this._stop; this._stop = false; return requested; },
       sleep: (seconds) => new Promise((resolve) => {
@@ -111,6 +116,8 @@ export class PythonRuntime {
     }
     this._running = true;
     this._stop = false;
+    // Los cambios pendientes del teclado se descartan al iniciar el programa (v5 §10.5).
+    resetKeyboard();
     this._current = this._execute(code);
     return this._current;
   }
@@ -131,6 +138,8 @@ export class PythonRuntime {
       // Equivale al Supervisor de Python al terminar el programa: no dejar motores en marcha.
       const hub = this._getHub();
       if (hub?.isConnected) { try { await hub.stopAll(); } catch { /* mejor esfuerzo */ } }
+      // El teclado se libera al terminar el intérprete (v5 §10.5), no al salir del `with`.
+      try { releaseKeyboard(); } catch { /* mejor esfuerzo */ }
     }
   }
 
@@ -144,7 +153,7 @@ export class PythonRuntime {
     // con marcador "cancelled" (Python lanza TaskCancelled y corre sus finally) y las
     // del flujo principal con "stopped" (KeyboardInterrupt). Nunca se rechaza nada:
     // un rechazo a través de run_sync deja continuaciones de pila huérfanas en Pyodide.
-    try { this._getHub()?.task?.interruptAll?.(); } catch { /* mejor esfuerzo */ }
+    try { task.interruptAll(); } catch { /* mejor esfuerzo */ }
   }
 }
 

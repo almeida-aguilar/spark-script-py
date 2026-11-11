@@ -1,5 +1,6 @@
 """Drive until the distance sensor reports something nearer than 3 (scale 0..10)."""
-from wedo import Hub
+import wedopy
+from wedopy import Hub
 
 with Hub() as hub:
     sensor = hub.distance("B")
@@ -9,10 +10,10 @@ with Hub() as hub:
         try:
             motor.run(70)
             while sensor.read() > 3:
-                hub.task.wait(0.05)
+                wedopy.task.wait(0.05)
         finally:
             motor.stop()
 
-    drive_task = hub.task.spawn(drive)
+    drive_task = wedopy.task.spawn(drive)
     drive_task.join()
     hub.led.color("light_green")
